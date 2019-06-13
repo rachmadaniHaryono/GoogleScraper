@@ -8,3 +8,4 @@ sqlalchemy
 aiohttp
 fake_useragent
 recommonmark
+webdriver_manager
