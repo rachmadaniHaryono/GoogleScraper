@@ -126,7 +126,7 @@ NOTSET = 0
                              "<host>/<dbname>. Has precedence over proxy files.")
 
     parser.add_argument('-s', '--search-engines', action='store', default=['google'],
-                        help='What search engines to use (See GoogleScraper --config for the all supported). If you '
+                        help='What search engines to use (See GoogleScraper --view-config for the all supported). If you '
                              'want to use more than one at the same time, just separate with commatas: "google, bing, '
                              'yandex". If you want to use all search engines that are available, give \'*\' as '
                              'argument.')
