@@ -29,9 +29,10 @@ setup(
     extras_require={
         "dev": [
             "pytest",
-            "pytest-pylint",
             "pytest-black",
             "pytest-mypy",
+            "pytest-pylint",
+            "pytest-watch",
             "sphinx-autobuild",
         ]
     },
