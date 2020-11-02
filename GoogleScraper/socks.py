@@ -58,7 +58,19 @@ import socket
 import struct
 from errno import EOPNOTSUPP, EINVAL, EAGAIN
 from io import BytesIO, SEEK_CUR
-from collections import Callable
+
+try:
+    from collections.abc import Callable
+except ImportError:
+    from collections import Callable
+# @note above import is based on following url:
+# https://stackoverflow.com/a/53978543/1766261
+# it is done to remove following warning:
+# GoogleScraper/socks.py:61: DeprecationWarning:
+#  Using or importing the ABCs from 'collections' instead of from 'collections.abc'
+#  is deprecated since Python 3.3, and in 3.9 it will stop working
+# from collections import Callable
+
 
 PROXY_TYPE_SOCKS4 = SOCKS4 = 1
 PROXY_TYPE_SOCKS5 = SOCKS5 = 2
