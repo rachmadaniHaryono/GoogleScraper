@@ -49,7 +49,7 @@ def chunk_it(seq, num):
     last = 0.0
 
     while last < len(seq):
-        out.append(seq[int(last):int(last + avg)])
+        out.append(seq[int(last) : int(last + avg)])
         last += avg
 
     return out
@@ -65,8 +65,16 @@ def random_words(n=100, wordlength=range(10, 15)):
     Returns:
         Random words. What else you motherfucker?
     """
-    valid_words = re.compile(r'[a-zA-Z]{{{},{}}}'.format(wordlength.start, wordlength.stop))
-    found = list(set(valid_words.findall(requests.get('http://en.wikipedia.org/wiki/Special:Random').text)))
+    valid_words = re.compile(
+        r"[a-zA-Z]{{{},{}}}".format(wordlength.start, wordlength.stop)
+    )
+    found = list(
+        set(
+            valid_words.findall(
+                requests.get("http://en.wikipedia.org/wiki/Special:Random").text
+            )
+        )
+    )
     try:
         return found[:n]
     except IndexError:
@@ -75,8 +83,8 @@ def random_words(n=100, wordlength=range(10, 15)):
 
 def get_some_words(n=100):
     """Get some words. How the fuck know where we get them from."""
-    if os.path.exists('/usr/share/dict/words'):
-        words = open('/usr/share/dict/words').read().splitlines()
+    if os.path.exists("/usr/share/dict/words"):
+        words = open("/usr/share/dict/words").read().splitlines()
         if n < len(words):
             words = words[:n]
     else:
@@ -89,7 +97,7 @@ def get_base_path():
     return os.path.dirname(os.path.realpath(__file__))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import doctest
 
     doctest.testmod()

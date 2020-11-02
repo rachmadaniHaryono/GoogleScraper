@@ -23,7 +23,7 @@ from GoogleScraper.config import get_config
 import testing_utils
 
 base_config = get_config()
-all_search_engines = base_config['supported_search_engines']
+all_search_engines = base_config["supported_search_engines"]
 
 
 def is_string_and_longer_than(s, n):
@@ -49,180 +49,183 @@ class GoogleScraperMinimalFunctionalTestCase(unittest.TestCase):
     """
 
     def test_google_with_chrome_and_json_output(self):
-            """
-            Very common use case:
+        """
+        Very common use case:
 
-            Ensures that we can scrape three continuous sites with Google using
-            chrome in normal mode and save the results to a JSON file.
-            """
-            results_file = os.path.join(tempfile.gettempdir(), 'results-chrome.json')
-            if os.path.exists(results_file):
-                os.remove(results_file)
+        Ensures that we can scrape three continuous sites with Google using
+        chrome in normal mode and save the results to a JSON file.
+        """
+        results_file = os.path.join(tempfile.gettempdir(), "results-chrome.json")
+        if os.path.exists(results_file):
+            os.remove(results_file)
 
+        query = "Food New York"
 
-            query = 'Food New York'
+        config = {
+            "keyword": query,
+            "search_engines": ["Google"],
+            "num_results_per_page": 100,
+            "num_pages_for_keyword": 3,
+            "scrape_method": "selenium",
+            "sel_browser": "chrome",
+            "do_sleep": False,
+            "browser_mode": "normal",
+            "chromedriver_path": "/home/nikolai/projects/private/Drivers/chromedriver",
+            "output_filename": results_file,
+            "do_caching": False,
+        }
 
-            config = {
-                'keyword': query,
-                'search_engines': ['Google'],
-                'num_results_per_page': 100,
-                'num_pages_for_keyword': 3,
-                'scrape_method': 'selenium',
-                'sel_browser': 'chrome',
-                'do_sleep': False,
-                'browser_mode': 'normal',
-                'chromedriver_path': '/home/nikolai/projects/private/Drivers/chromedriver',
-                'output_filename': results_file,
-                'do_caching': False,
-            }
+        search = scrape_with_config(config)
 
-            search = scrape_with_config(config)
+        self.assertLess(search.started_searching, search.stopped_searching)
+        self.assertEqual(search.number_proxies_used, 1)
+        self.assertEqual(search.number_search_engines_used, 1)
+        self.assertEqual(search.number_search_queries, 1)
+        self.assertEqual(len(search.serps), 3)
 
-            self.assertLess(search.started_searching, search.stopped_searching)
-            self.assertEqual(search.number_proxies_used, 1)
-            self.assertEqual(search.number_search_engines_used, 1)
-            self.assertEqual(search.number_search_queries, 1)
-            self.assertEqual(len(search.serps), 3)
+        self.assertEqual(search.serps[0].page_number, 1)
+        self.assertEqual(search.serps[1].page_number, 2)
+        self.assertEqual(search.serps[2].page_number, 3)
 
-            self.assertEqual(search.serps[0].page_number, 1)
-            self.assertEqual(search.serps[1].page_number, 2)
-            self.assertEqual(search.serps[2].page_number, 3)
+        for serp in search.serps:
+            self.assertEqual(serp.status, "successful")
+            self.assertEqual(serp.search_engine_name.lower(), "google")
+            self.assertEqual(serp.scrape_method, "selenium")
+            self.assertTrue(serp.num_results_for_query)
+            self.assertAlmostEqual(int(serp.num_results), 100, delta=10)
+            self.assertFalse(
+                is_string_and_longer_than(serp.effective_query, 1),
+                msg=serp.effective_query,
+            )
+            self.assertEqual(serp.no_results, False)
+            self.assertEqual(serp.num_results, len(serp.links))
 
-            for serp in search.serps:
-                self.assertEqual(serp.status, 'successful')
-                self.assertEqual(serp.search_engine_name.lower(), 'google')
-                self.assertEqual(serp.scrape_method, 'selenium')
-                self.assertTrue(serp.num_results_for_query)
-                self.assertAlmostEqual(int(serp.num_results), 100, delta=10)
-                self.assertFalse(is_string_and_longer_than(serp.effective_query, 1), msg=serp.effective_query)
-                self.assertEqual(serp.no_results, False)
-                self.assertEqual(serp.num_results, len(serp.links))
+            for j, link in enumerate(serp.links):
+                if link.link_type == "results":
+                    self.assertTrue(is_string_and_longer_than(link.title, 3))
+                    self.assertTrue(is_string_and_longer_than(link.snippet, 3))
 
-                for j, link in enumerate(serp.links):
-                    if link.link_type == 'results':
-                        self.assertTrue(is_string_and_longer_than(link.title, 3))
-                        self.assertTrue(is_string_and_longer_than(link.snippet, 3))
+                self.assertTrue(is_string_and_longer_than(link.link, 10))
+                self.assertTrue(isinstance(link.rank, int))
 
-                    self.assertTrue(is_string_and_longer_than(link.link, 10))
-                    self.assertTrue(isinstance(link.rank, int))
+        # test that the json output is correct
+        self.assertTrue(os.path.isfile(results_file))
 
+        with open(results_file, "rt") as file:
+            obj = json.load(file)
 
-            # test that the json output is correct
-            self.assertTrue(os.path.isfile(results_file))
+            # check the same stuff again for the json file
+            for i, page in enumerate(obj):
+                self.assertEqual(page["effective_query"], "")
+                self.assertEqual(page["no_results"], "False")
+                self.assertEqual(page["num_results"], str(len(page["results"])))
+                self.assertAlmostEqual(int(page["num_results"]), 100, delta=10)
+                self.assertTrue(
+                    is_string_and_longer_than(page["num_results_for_query"], 5)
+                )
+                self.assertEqual(page["page_number"], str(i + 1))
+                self.assertEqual(page["query"], query)
+                # todo: Test requested_at
+                self.assertEqual(page["requested_by"], "localhost")
 
-            with open(results_file, 'rt') as file:
-                obj = json.load(file)
+                for j, result in enumerate(page["results"]):
+                    if result["link_type"] == "results":
+                        self.assertTrue(is_string_and_longer_than(result["title"], 3))
+                        self.assertTrue(is_string_and_longer_than(result["snippet"], 3))
 
-                # check the same stuff again for the json file
-                for i, page in enumerate(obj):
-                    self.assertEqual(page['effective_query'], '')
-                    self.assertEqual(page['no_results'], 'False')
-                    self.assertEqual(page['num_results'], str(len(page['results'])))
-                    self.assertAlmostEqual(int(page['num_results']), 100, delta=10)
-                    self.assertTrue(is_string_and_longer_than(page['num_results_for_query'], 5))
-                    self.assertEqual(page['page_number'], str(i+1))
-                    self.assertEqual(page['query'], query)
-                    # todo: Test requested_at
-                    self.assertEqual(page['requested_by'], 'localhost')
-
-                    for j, result in enumerate(page['results']):
-                        if result['link_type'] == 'results':
-                            self.assertTrue(is_string_and_longer_than(result['title'], 3))
-                            self.assertTrue(is_string_and_longer_than(result['snippet'], 3))
-
-                        self.assertTrue(is_string_and_longer_than(result['link'], 10))
-                        self.assertTrue(isinstance(int(result['rank']), int))
-
+                    self.assertTrue(is_string_and_longer_than(result["link"], 10))
+                    self.assertTrue(isinstance(int(result["rank"]), int))
 
     def test_bing_with_chrome_and_json_output(self):
-                """
-                Very common use case:
+        """
+        Very common use case:
 
-                Ensures that we can scrape three continuous sites with Bing using
-                chrome in headless mode and save the results to a JSON file.
-                """
-                results_file = os.path.join(tempfile.gettempdir(), 'results-chrome.json')
-                if os.path.exists(results_file):
-                    os.remove(results_file)
+        Ensures that we can scrape three continuous sites with Bing using
+        chrome in headless mode and save the results to a JSON file.
+        """
+        results_file = os.path.join(tempfile.gettempdir(), "results-chrome.json")
+        if os.path.exists(results_file):
+            os.remove(results_file)
 
+        query = "Startup San Francisco"
 
-                query = 'Startup San Francisco'
+        config = {
+            "keyword": query,
+            "search_engines": ["Bing"],
+            "num_results_per_page": 20,  # this is ignored by bing, 10 results per page
+            "num_pages_for_keyword": 3,
+            "scrape_method": "selenium",
+            "sel_browser": "chrome",
+            "do_sleep": False,
+            "browser_mode": "normal",
+            "chromedriver_path": "/home/nikolai/projects/private/Drivers/chromedriver",
+            "output_filename": results_file,
+            "do_caching": False,
+        }
 
-                config = {
-                    'keyword': query,
-                    'search_engines': ['Bing'],
-                    'num_results_per_page': 20, # this is ignored by bing, 10 results per page
-                    'num_pages_for_keyword': 3,
-                    'scrape_method': 'selenium',
-                    'sel_browser': 'chrome',
-                    'do_sleep': False,
-                    'browser_mode': 'normal',
-                    'chromedriver_path': '/home/nikolai/projects/private/Drivers/chromedriver',
-                    'output_filename': results_file,
-                    'do_caching': False,
-                }
+        search = scrape_with_config(config)
 
-                search = scrape_with_config(config)
+        self.assertLess(search.started_searching, search.stopped_searching)
+        self.assertEqual(search.number_proxies_used, 1)
+        self.assertEqual(search.number_search_engines_used, 1)
+        self.assertEqual(search.number_search_queries, 1)
+        self.assertEqual(len(search.serps), 3)
 
-                self.assertLess(search.started_searching, search.stopped_searching)
-                self.assertEqual(search.number_proxies_used, 1)
-                self.assertEqual(search.number_search_engines_used, 1)
-                self.assertEqual(search.number_search_queries, 1)
-                self.assertEqual(len(search.serps), 3)
+        self.assertEqual(search.serps[0].page_number, 1)
+        self.assertEqual(search.serps[1].page_number, 2)
+        self.assertEqual(search.serps[2].page_number, 3)
 
-                self.assertEqual(search.serps[0].page_number, 1)
-                self.assertEqual(search.serps[1].page_number, 2)
-                self.assertEqual(search.serps[2].page_number, 3)
+        for serp in search.serps:
+            self.assertEqual(serp.status, "successful")
+            self.assertEqual(serp.search_engine_name.lower(), "bing")
+            self.assertEqual(serp.scrape_method, "selenium")
+            self.assertTrue(serp.num_results_for_query)
+            self.assertAlmostEqual(int(serp.num_results), 10, delta=4)
+            self.assertFalse(
+                is_string_and_longer_than(serp.effective_query, 1),
+                msg=serp.effective_query,
+            )
+            # self.assertEqual(serp.no_results, False)
+            self.assertEqual(serp.num_results, len(serp.links))
 
-                for serp in search.serps:
-                    self.assertEqual(serp.status, 'successful')
-                    self.assertEqual(serp.search_engine_name.lower(), 'bing')
-                    self.assertEqual(serp.scrape_method, 'selenium')
-                    self.assertTrue(serp.num_results_for_query)
-                    self.assertAlmostEqual(int(serp.num_results), 10, delta=4)
-                    self.assertFalse(is_string_and_longer_than(serp.effective_query, 1), msg=serp.effective_query)
-                    #self.assertEqual(serp.no_results, False)
-                    self.assertEqual(serp.num_results, len(serp.links))
+            for j, link in enumerate(serp.links):
+                if link.link_type == "results":
+                    self.assertTrue(is_string_and_longer_than(link.title, 3))
+                    self.assertTrue(is_string_and_longer_than(link.snippet, 3))
 
-                    for j, link in enumerate(serp.links):
-                        if link.link_type == 'results':
-                            self.assertTrue(is_string_and_longer_than(link.title, 3))
-                            self.assertTrue(is_string_and_longer_than(link.snippet, 3))
+                self.assertTrue(is_string_and_longer_than(link.link, 10))
+                self.assertTrue(isinstance(link.rank, int))
 
-                        self.assertTrue(is_string_and_longer_than(link.link, 10))
-                        self.assertTrue(isinstance(link.rank, int))
+        # test that the json output is correct
+        self.assertTrue(os.path.isfile(results_file))
 
+        with open(results_file, "rt") as file:
+            obj = json.load(file)
 
-                # test that the json output is correct
-                self.assertTrue(os.path.isfile(results_file))
+            # check the same stuff again for the json file
+            for i, page in enumerate(obj):
+                self.assertEqual(page["effective_query"], "")
+                # self.assertEqual(page['no_results'], 'False')
+                self.assertEqual(page["num_results"], str(len(page["results"])))
+                self.assertAlmostEqual(int(page["num_results"]), 10, delta=4)
+                self.assertTrue(
+                    is_string_and_longer_than(page["num_results_for_query"], 5)
+                )
+                self.assertEqual(page["page_number"], str(i + 1))
+                self.assertEqual(page["query"], query)
+                # todo: Test requested_at
+                self.assertEqual(page["requested_by"], "localhost")
 
-                with open(results_file, 'rt') as file:
-                    obj = json.load(file)
+                for j, result in enumerate(page["results"]):
+                    if result["link_type"] == "results":
+                        self.assertTrue(is_string_and_longer_than(result["title"], 3))
+                        self.assertTrue(is_string_and_longer_than(result["snippet"], 3))
 
-                    # check the same stuff again for the json file
-                    for i, page in enumerate(obj):
-                        self.assertEqual(page['effective_query'], '')
-                        #self.assertEqual(page['no_results'], 'False')
-                        self.assertEqual(page['num_results'], str(len(page['results'])))
-                        self.assertAlmostEqual(int(page['num_results']), 10, delta=4)
-                        self.assertTrue(is_string_and_longer_than(page['num_results_for_query'], 5))
-                        self.assertEqual(page['page_number'], str(i+1))
-                        self.assertEqual(page['query'], query)
-                        # todo: Test requested_at
-                        self.assertEqual(page['requested_by'], 'localhost')
-
-                        for j, result in enumerate(page['results']):
-                            if result['link_type'] == 'results':
-                                self.assertTrue(is_string_and_longer_than(result['title'], 3))
-                                self.assertTrue(is_string_and_longer_than(result['snippet'], 3))
-
-                            self.assertTrue(is_string_and_longer_than(result['link'], 10))
-                            self.assertTrue(isinstance(int(result['rank']), int))
-
+                    self.assertTrue(is_string_and_longer_than(result["link"], 10))
+                    self.assertTrue(isinstance(int(result["rank"]), int))
 
 
 class GoogleScraperFunctionalTestCase(unittest.TestCase):
-
     def test_all_search_engines_in_http_mode(self):
         """
         Very simple test case that assures that scraping all
@@ -230,13 +233,13 @@ class GoogleScraperFunctionalTestCase(unittest.TestCase):
         """
 
         config = {
-            'keyword': 'in this world',
-            'search_engines': '*',
-            'scrape_method': 'http',
-            'do_caching': False,
-            'num_results_per_page': 10,
-            'log_level': 'WARNING',
-            'print_results': 'summarize',
+            "keyword": "in this world",
+            "search_engines": "*",
+            "scrape_method": "http",
+            "do_caching": False,
+            "num_results_per_page": 10,
+            "log_level": "WARNING",
+            "print_results": "summarize",
         }
 
         search = scrape_with_config(config)
@@ -249,16 +252,19 @@ class GoogleScraperFunctionalTestCase(unittest.TestCase):
 
         for i, serp in enumerate(search.serps):
             self.assertEqual(search.serps[i].page_number, 1)
-            self.assertEqual(serp.status, 'successful')
+            self.assertEqual(serp.status, "successful")
             self.assertIn(serp.search_engine_name.lower(), all_search_engines)
-            self.assertEqual(serp.scrape_method, 'http')
+            self.assertEqual(serp.scrape_method, "http")
             self.assertTrue(serp.num_results_for_query)
             self.assertTrue(serp.num_results >= 7)
-            self.assertFalse(is_string_and_longer_than(serp.effective_query, 1), msg=serp.effective_query)
+            self.assertFalse(
+                is_string_and_longer_than(serp.effective_query, 1),
+                msg=serp.effective_query,
+            )
             self.assertEqual(serp.num_results, len(serp.links))
 
             for j, link in enumerate(serp.links):
-                if link.link_type == 'results':
+                if link.link_type == "results":
                     self.assertTrue(is_string_and_longer_than(link.title, 3))
                     # no snippet needed actually
                     # self.assertTrue(is_string_and_longer_than(link.snippet, 3))
@@ -266,7 +272,6 @@ class GoogleScraperFunctionalTestCase(unittest.TestCase):
                 self.assertTrue(is_string_and_longer_than(link.link, 10))
                 self.assertTrue(link.domain in link.link)
                 self.assertTrue(isinstance(link.rank, int))
-
 
     def test_all_search_engines_in_selenium_mode(self):
         """
@@ -277,14 +282,14 @@ class GoogleScraperFunctionalTestCase(unittest.TestCase):
         """
 
         config = {
-            'keyword': 'dont look back in anger',
-            'search_engines': '*',
-            'scrape_method': 'selenium',
-            'sel_browser': 'chrome',
-            'browser_mode': 'headless',
-            'chromedriver_path': '/home/nikolai/projects/private/Drivers/chromedriver',
-            'do_caching': False,
-            'num_results_per_page': 10,
+            "keyword": "dont look back in anger",
+            "search_engines": "*",
+            "scrape_method": "selenium",
+            "sel_browser": "chrome",
+            "browser_mode": "headless",
+            "chromedriver_path": "/home/nikolai/projects/private/Drivers/chromedriver",
+            "do_caching": False,
+            "num_results_per_page": 10,
         }
 
         search = scrape_with_config(config)
@@ -297,24 +302,26 @@ class GoogleScraperFunctionalTestCase(unittest.TestCase):
 
         for i, serp in enumerate(search.serps):
             self.assertEqual(search.serps[i].page_number, 1)
-            self.assertEqual(serp.status, 'successful')
+            self.assertEqual(serp.status, "successful")
             self.assertIn(serp.search_engine_name.lower(), all_search_engines)
-            self.assertEqual(serp.scrape_method, 'selenium')
+            self.assertEqual(serp.scrape_method, "selenium")
             self.assertTrue(serp.num_results_for_query)
             self.assertAlmostEqual(serp.num_results, 10, delta=2)
-            self.assertFalse(is_string_and_longer_than(serp.effective_query, 1), msg=serp.effective_query)
+            self.assertFalse(
+                is_string_and_longer_than(serp.effective_query, 1),
+                msg=serp.effective_query,
+            )
             self.assertEqual(serp.no_results, False)
             self.assertEqual(serp.num_results, len(serp.links))
 
             for j, link in enumerate(serp.links):
-                if link.link_type == 'results':
+                if link.link_type == "results":
                     self.assertTrue(is_string_and_longer_than(link.title, 3))
                     self.assertTrue(is_string_and_longer_than(link.snippet, 3))
 
                 self.assertTrue(is_string_and_longer_than(link.link, 10))
                 self.assertTrue(link.domain in link.link)
                 self.assertTrue(isinstance(link.rank, int))
-
 
     def test_google_with_chrome_and_json_output(self):
         """
@@ -323,22 +330,22 @@ class GoogleScraperFunctionalTestCase(unittest.TestCase):
         Ensures that we can scrape three continuous sites with Google using
         chrome in headless mode and save the results to a JSON file.
         """
-        results_file = os.path.join(tempfile.gettempdir(), 'results.json')
+        results_file = os.path.join(tempfile.gettempdir(), "results.json")
         if os.path.exists(results_file):
             os.remove(results_file)
 
         config = {
-            'keyword': 'apple tree',
-            'search_engines': ['Google'],
-            'num_results_per_page': 10,
-            'num_pages_for_keyword': 3,
-            'scrape_method': 'selenium',
-            'sel_browser': 'chrome',
-            'do_sleep': False,
-            'browser_mode': 'headless',
-            'chromedriver_path': '/home/nikolai/projects/private/Drivers/chromedriver',
-            'output_filename': results_file,
-            'do_caching': False,
+            "keyword": "apple tree",
+            "search_engines": ["Google"],
+            "num_results_per_page": 10,
+            "num_pages_for_keyword": 3,
+            "scrape_method": "selenium",
+            "sel_browser": "chrome",
+            "do_sleep": False,
+            "browser_mode": "headless",
+            "chromedriver_path": "/home/nikolai/projects/private/Drivers/chromedriver",
+            "output_filename": results_file,
+            "do_caching": False,
         }
 
         search = scrape_with_config(config)
@@ -354,49 +361,52 @@ class GoogleScraperFunctionalTestCase(unittest.TestCase):
         self.assertEqual(search.serps[2].page_number, 3)
 
         for serp in search.serps:
-            self.assertEqual(serp.status, 'successful')
-            self.assertEqual(serp.search_engine_name.lower(), 'google')
-            self.assertEqual(serp.scrape_method, 'selenium')
+            self.assertEqual(serp.status, "successful")
+            self.assertEqual(serp.search_engine_name.lower(), "google")
+            self.assertEqual(serp.scrape_method, "selenium")
             self.assertTrue(serp.num_results_for_query)
             self.assertAlmostEqual(serp.num_results, 10, delta=2)
-            self.assertFalse(is_string_and_longer_than(serp.effective_query, 1), msg=serp.effective_query)
+            self.assertFalse(
+                is_string_and_longer_than(serp.effective_query, 1),
+                msg=serp.effective_query,
+            )
             self.assertEqual(serp.no_results, False)
             self.assertEqual(serp.num_results, len(serp.links))
 
             for j, link in enumerate(serp.links):
-                if link.link_type == 'results':
+                if link.link_type == "results":
                     self.assertTrue(is_string_and_longer_than(link.title, 3))
                     self.assertTrue(is_string_and_longer_than(link.snippet, 3))
 
                 self.assertTrue(is_string_and_longer_than(link.link, 10))
                 self.assertTrue(isinstance(link.rank, int))
 
-
         # test that the json output is correct
         self.assertTrue(os.path.isfile(results_file))
 
-        with open(results_file, 'rt') as file:
+        with open(results_file, "rt") as file:
             obj = json.load(file)
 
             # check the same stuff again for the json file
             for i, page in enumerate(obj):
-                self.assertEqual(page['effective_query'], '')
-                self.assertEqual(page['no_results'], 'False')
-                self.assertEqual(page['num_results'], str(len(page['results'])))
-                self.assertTrue(is_string_and_longer_than(page['num_results_for_query'], 5))
-                self.assertEqual(page['page_number'], str(i+1))
-                self.assertEqual(page['query'], 'apple tree')
+                self.assertEqual(page["effective_query"], "")
+                self.assertEqual(page["no_results"], "False")
+                self.assertEqual(page["num_results"], str(len(page["results"])))
+                self.assertTrue(
+                    is_string_and_longer_than(page["num_results_for_query"], 5)
+                )
+                self.assertEqual(page["page_number"], str(i + 1))
+                self.assertEqual(page["query"], "apple tree")
                 # todo: Test requested_at
-                self.assertEqual(page['requested_by'], 'localhost')
+                self.assertEqual(page["requested_by"], "localhost")
 
-                for j, result in enumerate(page['results']):
-                    if result['link_type'] == 'results':
-                        self.assertTrue(is_string_and_longer_than(result['title'], 3))
-                        self.assertTrue(is_string_and_longer_than(result['snippet'], 3))
+                for j, result in enumerate(page["results"]):
+                    if result["link_type"] == "results":
+                        self.assertTrue(is_string_and_longer_than(result["title"], 3))
+                        self.assertTrue(is_string_and_longer_than(result["snippet"], 3))
 
-                    self.assertTrue(is_string_and_longer_than(result['link'], 10))
-                    self.assertTrue(isinstance(int(result['rank']), int))
-
+                    self.assertTrue(is_string_and_longer_than(result["link"], 10))
+                    self.assertTrue(isinstance(int(result["rank"]), int))
 
     def test_google_with_firefox_and_json_output(self):
         """
@@ -405,23 +415,23 @@ class GoogleScraperFunctionalTestCase(unittest.TestCase):
         Ensures that we can scrape three continuous sites with Google using
         firefox in headless mode and save the results to a JSON file.
         """
-        results_file = os.path.join(tempfile.gettempdir(), 'results.json')
+        results_file = os.path.join(tempfile.gettempdir(), "results.json")
         if os.path.exists(results_file):
             os.remove(results_file)
 
         config = {
-            'keyword': 'how to find large prime numbers',
-            'search_engines': ['Google'],
-            'num_results_per_page': 10,
-            'num_pages_for_keyword': 3,
-            'scrape_method': 'selenium',
-            'sel_browser': 'firefox',
-            'browser_mode': 'headless',
-            'do_sleep': False,
-            'firefox_binary_path': '/home/nikolai/firefox/firefox',
-            'geckodriver_path': '/home/nikolai/projects/private/Drivers/geckodriver',
-            'output_filename': results_file,
-            'do_caching': False,
+            "keyword": "how to find large prime numbers",
+            "search_engines": ["Google"],
+            "num_results_per_page": 10,
+            "num_pages_for_keyword": 3,
+            "scrape_method": "selenium",
+            "sel_browser": "firefox",
+            "browser_mode": "headless",
+            "do_sleep": False,
+            "firefox_binary_path": "/home/nikolai/firefox/firefox",
+            "geckodriver_path": "/home/nikolai/projects/private/Drivers/geckodriver",
+            "output_filename": results_file,
+            "do_caching": False,
         }
 
         search = scrape_with_config(config)
@@ -437,65 +447,75 @@ class GoogleScraperFunctionalTestCase(unittest.TestCase):
         self.assertEqual(search.serps[2].page_number, 3)
 
         for serp in search.serps:
-            self.assertEqual(serp.status, 'successful')
-            self.assertEqual(serp.search_engine_name.lower(), 'google')
-            self.assertEqual(serp.scrape_method, 'selenium')
+            self.assertEqual(serp.status, "successful")
+            self.assertEqual(serp.search_engine_name.lower(), "google")
+            self.assertEqual(serp.scrape_method, "selenium")
             self.assertTrue(serp.num_results_for_query)
             self.assertAlmostEqual(serp.num_results, 10, delta=2)
-            self.assertFalse(is_string_and_longer_than(serp.effective_query, 1), msg=serp.effective_query)
+            self.assertFalse(
+                is_string_and_longer_than(serp.effective_query, 1),
+                msg=serp.effective_query,
+            )
             self.assertEqual(serp.no_results, False)
             self.assertEqual(serp.num_results, len(serp.links))
-            self.assertTrue(testing_utils.assert_atleast_delta_percent_of_items(serp.links, 'snippet', delta=0.8))
+            self.assertTrue(
+                testing_utils.assert_atleast_delta_percent_of_items(
+                    serp.links, "snippet", delta=0.8
+                )
+            )
 
             for j, link in enumerate(serp.links):
-                if link.link_type == 'results':
+                if link.link_type == "results":
                     self.assertTrue(is_string_and_longer_than(link.title, 3))
 
                 self.assertTrue(is_string_and_longer_than(link.link, 10))
                 self.assertTrue(isinstance(link.rank, int))
 
-
         # test that the json output is correct
         self.assertTrue(os.path.isfile(results_file))
 
-        with open(results_file, 'rt') as file:
+        with open(results_file, "rt") as file:
             obj = json.load(file)
 
             # check the same stuff again for the json file
             for i, page in enumerate(obj):
-                self.assertEqual(page['effective_query'], '')
-                self.assertEqual(page['no_results'], 'False')
-                self.assertEqual(page['num_results'], str(len(page['results'])))
-                self.assertTrue(is_string_and_longer_than(page['num_results_for_query'], 5))
-                self.assertEqual(page['page_number'], str(i+1))
-                self.assertEqual(page['query'], 'how to find large prime numbers')
+                self.assertEqual(page["effective_query"], "")
+                self.assertEqual(page["no_results"], "False")
+                self.assertEqual(page["num_results"], str(len(page["results"])))
+                self.assertTrue(
+                    is_string_and_longer_than(page["num_results_for_query"], 5)
+                )
+                self.assertEqual(page["page_number"], str(i + 1))
+                self.assertEqual(page["query"], "how to find large prime numbers")
                 # todo: Test requested_at
-                self.assertEqual(page['requested_by'], 'localhost')
-                self.assertTrue(testing_utils.assert_atleast_delta_percent_of_items_dict(page['results'], 'snippet', delta=0.8))
+                self.assertEqual(page["requested_by"], "localhost")
+                self.assertTrue(
+                    testing_utils.assert_atleast_delta_percent_of_items_dict(
+                        page["results"], "snippet", delta=0.8
+                    )
+                )
 
-                for j, result in enumerate(page['results']):
-                    if result['link_type'] == 'results':
-                        self.assertTrue(is_string_and_longer_than(result['title'], 3))
+                for j, result in enumerate(page["results"]):
+                    if result["link_type"] == "results":
+                        self.assertTrue(is_string_and_longer_than(result["title"], 3))
 
-                    self.assertTrue(is_string_and_longer_than(result['link'], 10))
-                    self.assertTrue(isinstance(int(result['rank']), int))
-
-
+                    self.assertTrue(is_string_and_longer_than(result["link"], 10))
+                    self.assertTrue(isinstance(int(result["rank"]), int))
 
     def test_http_mode_google_csv_output(self):
 
-        results_file = os.path.join(tempfile.gettempdir(), 'results.csv')
+        results_file = os.path.join(tempfile.gettempdir(), "results.csv")
         if os.path.exists(results_file):
             os.remove(results_file)
 
         config = {
-            'keyword': 'banana',
-            'search_engines': ['Google'],
-            'num_results_per_page': 10,
-            'num_pages_for_keyword': 2,
-            'scrape_method': 'http',
-            'output_filename': results_file,
-            'do_caching': False,
+            "keyword": "banana",
+            "search_engines": ["Google"],
+            "num_results_per_page": 10,
+            "num_pages_for_keyword": 2,
+            "scrape_method": "http",
+            "output_filename": results_file,
+            "do_caching": False,
         }
 
         search = scrape_with_config(config)
@@ -510,21 +530,25 @@ class GoogleScraperFunctionalTestCase(unittest.TestCase):
         self.assertEqual(search.serps[1].page_number, 2)
 
         for serp in search.serps:
-            self.assertEqual(serp.query, 'banana')
-            self.assertEqual(serp.status, 'successful')
-            self.assertEqual(serp.search_engine_name.lower(), 'google')
-            self.assertEqual(serp.scrape_method, 'http')
+            self.assertEqual(serp.query, "banana")
+            self.assertEqual(serp.status, "successful")
+            self.assertEqual(serp.search_engine_name.lower(), "google")
+            self.assertEqual(serp.scrape_method, "http")
             self.assertTrue(serp.num_results_for_query)
             self.assertAlmostEqual(serp.num_results, 10, delta=2)
-            self.assertFalse(is_string_and_longer_than(serp.effective_query, 1), msg=serp.effective_query)
+            self.assertFalse(
+                is_string_and_longer_than(serp.effective_query, 1),
+                msg=serp.effective_query,
+            )
             self.assertEqual(serp.no_results, False)
 
             self.assertEqual(serp.num_results, len(serp.links))
 
-            predicate_true_at_least_n_times(lambda v: is_string_and_longer_than(v, 3),
-                                                    serp.links, 7, 'snippet')
+            predicate_true_at_least_n_times(
+                lambda v: is_string_and_longer_than(v, 3), serp.links, 7, "snippet"
+            )
             for link in serp.links:
-                if link.link_type == 'results':
+                if link.link_type == "results":
                     self.assertTrue(is_string_and_longer_than(link.title, 3))
 
                 self.assertTrue(is_string_and_longer_than(link.link, 10))
@@ -533,38 +557,44 @@ class GoogleScraperFunctionalTestCase(unittest.TestCase):
         # test that the csv output is correct
         self.assertTrue(os.path.isfile(results_file))
 
-        with open(results_file, 'rt') as file:
-            reader = csv.DictReader(file, delimiter=',')
+        with open(results_file, "rt") as file:
+            reader = csv.DictReader(file, delimiter=",")
 
             rows = [row for row in reader]
 
             self.assertAlmostEqual(20, len(rows), delta=3)
 
             for row in rows:
-                self.assertEqual(row['query'], 'banana')
-                self.assertTrue(is_string_and_longer_than(row['requested_at'], 5))
-                self.assertTrue(int(row['num_results']))
-                self.assertEqual(row['scrape_method'], 'http')
-                self.assertEqual(row['requested_by'], 'localhost')
-                self.assertEqual(row['search_engine_name'], 'google')
-                self.assertIn(int(row['page_number']), [1,2])
-                self.assertEqual(row['status'], 'successful')
-                self.assertTrue(row['no_results'] == 'False')
-                self.assertTrue(row['effective_query'] == '')
+                self.assertEqual(row["query"], "banana")
+                self.assertTrue(is_string_and_longer_than(row["requested_at"], 5))
+                self.assertTrue(int(row["num_results"]))
+                self.assertEqual(row["scrape_method"], "http")
+                self.assertEqual(row["requested_by"], "localhost")
+                self.assertEqual(row["search_engine_name"], "google")
+                self.assertIn(int(row["page_number"]), [1, 2])
+                self.assertEqual(row["status"], "successful")
+                self.assertTrue(row["no_results"] == "False")
+                self.assertTrue(row["effective_query"] == "")
 
-                if row['link_type'] == 'results':
-                    self.assertTrue(is_string_and_longer_than(row['title'], 3))
-                    self.assertTrue(is_string_and_longer_than(row['snippet'], 3))
-                    self.assertTrue(is_string_and_longer_than(row['domain'], 5))
-                    self.assertTrue(is_string_and_longer_than(row['visible_link'], 5))
-                    self.assertTrue(is_string_and_longer_than(row['num_results_for_query'], 3))
+                if row["link_type"] == "results":
+                    self.assertTrue(is_string_and_longer_than(row["title"], 3))
+                    self.assertTrue(is_string_and_longer_than(row["snippet"], 3))
+                    self.assertTrue(is_string_and_longer_than(row["domain"], 5))
+                    self.assertTrue(is_string_and_longer_than(row["visible_link"], 5))
+                    self.assertTrue(
+                        is_string_and_longer_than(row["num_results_for_query"], 3)
+                    )
 
-                self.assertTrue(is_string_and_longer_than(row['link'], 10))
-                self.assertTrue(row['rank'].isdigit())
+                self.assertTrue(is_string_and_longer_than(row["link"], 10))
+                self.assertTrue(row["rank"].isdigit())
 
             # ensure that at least 90% of all entries have a string as snippet
-            predicate_true_at_least_n_times(lambda v: is_string_and_longer_than(v, 3), rows, int(0.8*len(rows)), 'snippet')
-
+            predicate_true_at_least_n_times(
+                lambda v: is_string_and_longer_than(v, 3),
+                rows,
+                int(0.8 * len(rows)),
+                "snippet",
+            )
 
     def test_asynchronous_mode_bing_and_yandex(self):
         """
@@ -573,23 +603,23 @@ class GoogleScraperFunctionalTestCase(unittest.TestCase):
         - 30 results for bing and 30 results for yandex
         - valid json file with the contents
         """
-        results_file = os.path.join(tempfile.gettempdir(), 'async_results.json')
+        results_file = os.path.join(tempfile.gettempdir(), "async_results.json")
         if os.path.exists(results_file):
             os.remove(results_file)
 
         config = {
-            'keyword': 'where is my mind',
-            'search_engines': ['bing', 'yandex'],
-            'num_results_per_page': 10,
-            'num_pages_for_keyword': 3,
-            'scrape_method': 'http-async',
-            'output_filename': results_file,
-            'do_caching': False,
+            "keyword": "where is my mind",
+            "search_engines": ["bing", "yandex"],
+            "num_results_per_page": 10,
+            "num_pages_for_keyword": 3,
+            "scrape_method": "http-async",
+            "output_filename": results_file,
+            "do_caching": False,
         }
 
         search = scrape_with_config(config)
 
-        self.assertEqual(search.keyword_file, '')
+        self.assertEqual(search.keyword_file, "")
         self.assertLess(search.started_searching, search.stopped_searching)
         self.assertEqual(search.number_proxies_used, 1)
         self.assertEqual(search.number_search_engines_used, 2)
@@ -597,27 +627,55 @@ class GoogleScraperFunctionalTestCase(unittest.TestCase):
         self.assertEqual(len(search.serps), 6)
 
         # test that we have twice [1,2,3] as page numbers
-        self.assertSetEqual(set([serp.page_number for serp in search.serps]), {1,2,3})
+        self.assertSetEqual(set([serp.page_number for serp in search.serps]), {1, 2, 3})
 
-        self.assertAlmostEqual(sum([len(serp.links) for serp in search.serps]), 60, delta=10)
-        self.assertAlmostEqual(sum([len(serp.links) for serp in search.serps if serp.search_engine_name == 'yandex']), 30, delta=5)
-        self.assertAlmostEqual(sum([len(serp.links) for serp in search.serps if serp.search_engine_name == 'bing']), 30, delta=5)
+        self.assertAlmostEqual(
+            sum([len(serp.links) for serp in search.serps]), 60, delta=10
+        )
+        self.assertAlmostEqual(
+            sum(
+                [
+                    len(serp.links)
+                    for serp in search.serps
+                    if serp.search_engine_name == "yandex"
+                ]
+            ),
+            30,
+            delta=5,
+        )
+        self.assertAlmostEqual(
+            sum(
+                [
+                    len(serp.links)
+                    for serp in search.serps
+                    if serp.search_engine_name == "bing"
+                ]
+            ),
+            30,
+            delta=5,
+        )
 
         for serp in search.serps:
-            self.assertEqual(serp.query, 'where is my mind')
-            self.assertEqual(serp.status, 'successful')
-            self.assertIn(serp.search_engine_name.lower(), ('bing', 'yandex'))
-            self.assertEqual(serp.scrape_method, 'http-async')
-            if serp.search_engine_name != 'yandex':
-                self.assertTrue(is_string_and_longer_than(serp.num_results_for_query, 5))
+            self.assertEqual(serp.query, "where is my mind")
+            self.assertEqual(serp.status, "successful")
+            self.assertIn(serp.search_engine_name.lower(), ("bing", "yandex"))
+            self.assertEqual(serp.scrape_method, "http-async")
+            if serp.search_engine_name != "yandex":
+                self.assertTrue(
+                    is_string_and_longer_than(serp.num_results_for_query, 5)
+                )
             self.assertAlmostEqual(serp.num_results, 10, delta=2)
-            self.assertFalse(is_string_and_longer_than(serp.effective_query, 1), msg=serp.effective_query)
+            self.assertFalse(
+                is_string_and_longer_than(serp.effective_query, 1),
+                msg=serp.effective_query,
+            )
             self.assertEqual(serp.num_results, len(serp.links))
 
-            predicate_true_at_least_n_times(lambda v: is_string_and_longer_than(v, 3),
-                                                    serp.links, 7, 'snippet')
+            predicate_true_at_least_n_times(
+                lambda v: is_string_and_longer_than(v, 3), serp.links, 7, "snippet"
+            )
             for link in serp.links:
-                if link.link_type == 'results':
+                if link.link_type == "results":
                     self.assertTrue(is_string_and_longer_than(link.title, 3))
 
                 self.assertTrue(is_string_and_longer_than(link.link, 10))
@@ -626,26 +684,28 @@ class GoogleScraperFunctionalTestCase(unittest.TestCase):
         # test that the json output is correct
         self.assertTrue(os.path.isfile(results_file))
 
-        with open(results_file, 'rt') as file:
+        with open(results_file, "rt") as file:
             obj = json.load(file)
 
             # check the same stuff again for the json file
             for i, page in enumerate(obj):
-                self.assertEqual(page['effective_query'], '')
-                self.assertEqual(page['num_results'], str(len(page['results'])))
-                if page['search_engine_name'].lower() != 'yandex':
-                    self.assertTrue(is_string_and_longer_than(page['num_results_for_query'], 5))
-                self.assertEqual(page['query'], 'where is my mind')
-                self.assertEqual(page['requested_by'], 'localhost')
+                self.assertEqual(page["effective_query"], "")
+                self.assertEqual(page["num_results"], str(len(page["results"])))
+                if page["search_engine_name"].lower() != "yandex":
+                    self.assertTrue(
+                        is_string_and_longer_than(page["num_results_for_query"], 5)
+                    )
+                self.assertEqual(page["query"], "where is my mind")
+                self.assertEqual(page["requested_by"], "localhost")
 
-                for j, result in enumerate(page['results']):
-                    if result['link_type'] == 'results':
-                        self.assertTrue(is_string_and_longer_than(result['title'], 3))
-                        self.assertTrue(is_string_and_longer_than(result['snippet'], 3))
+                for j, result in enumerate(page["results"]):
+                    if result["link_type"] == "results":
+                        self.assertTrue(is_string_and_longer_than(result["title"], 3))
+                        self.assertTrue(is_string_and_longer_than(result["snippet"], 3))
 
-                    self.assertTrue(is_string_and_longer_than(result['link'], 10))
-                    self.assertTrue(isinstance(int(result['rank']), int))
+                    self.assertTrue(is_string_and_longer_than(result["link"], 10))
+                    self.assertTrue(isinstance(int(result["rank"]), int))
 
 
-if __name__ == '__main__':
-    unittest.main(warnings='ignore')
+if __name__ == "__main__":
+    unittest.main(warnings="ignore")

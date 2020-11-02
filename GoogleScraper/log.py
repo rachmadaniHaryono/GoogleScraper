@@ -15,15 +15,17 @@ So we need to adjust the loglevel to the value set in
 the configuration for each submodule.
 """
 
-def setup_logger(level=logging.INFO,
-         format='[%(threadName)s] - %(asctime)s - %(name)s - %(levelname)s - %(message)s',
-         logfile='googlescraper.log'):
+
+def setup_logger(
+    level=logging.INFO,
+    format="[%(threadName)s] - %(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    logfile="googlescraper.log",
+):
     """
     Configure global log settings for GoogleScraper
     """
     logger = logging.getLogger()
     logger.setLevel(level)
-
 
     # See here: http://stackoverflow.com/questions/7173033/duplicate-log-output-when-using-python-logging-module
     if not len(logger.handlers):

@@ -5,19 +5,19 @@ from GoogleScraper import scrape_with_config, GoogleSearchError
 from GoogleScraper.utils import get_some_words
 
 keywords = get_some_words(10)
-with open('keywords.txt', 'wt') as f:
+with open("keywords.txt", "wt") as f:
     for word in keywords:
-        f.write(word + '\n')
+        f.write(word + "\n")
 
 # See in the config.cfg file for possible values
 config = {
-    'use_own_ip': True,
-    'keyword_file': 'keywords.txt',
-    'search_engines': ['bing', 'duckduckgo'],
-    'num_pages_for_keyword': 2,
-    'scrape_method': 'http-async',
-    'do_caching': True,
-    'output_filename': 'out.csv',
+    "use_own_ip": True,
+    "keyword_file": "keywords.txt",
+    "search_engines": ["bing", "duckduckgo"],
+    "num_pages_for_keyword": 2,
+    "scrape_method": "http-async",
+    "do_caching": True,
+    "output_filename": "out.csv",
 }
 
 try:

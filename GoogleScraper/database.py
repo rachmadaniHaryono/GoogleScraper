@@ -16,7 +16,16 @@ can be assigned to more than one ScraperSearch. Therefore we need a n:m relation
 
 import datetime
 from urllib.parse import urlparse
-from sqlalchemy import Column, String, Integer, ForeignKey, Table, DateTime, Enum, Boolean
+from sqlalchemy import (
+    Column,
+    String,
+    Integer,
+    ForeignKey,
+    Table,
+    DateTime,
+    Enum,
+    Boolean,
+)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy import create_engine, UniqueConstraint
@@ -25,13 +34,16 @@ from sqlalchemy.orm import sessionmaker
 
 Base = declarative_base()
 
-scraper_searches_serps = Table('scraper_searches_serps', Base.metadata,
-                               Column('scraper_search_id', Integer, ForeignKey('scraper_search.id')),
-                               Column('serp_id', Integer, ForeignKey('serp.id')))
+scraper_searches_serps = Table(
+    "scraper_searches_serps",
+    Base.metadata,
+    Column("scraper_search_id", Integer, ForeignKey("scraper_search.id")),
+    Column("serp_id", Integer, ForeignKey("serp.id")),
+)
 
 
 class ScraperSearch(Base):
-    __tablename__ = 'scraper_search'
+    __tablename__ = "scraper_search"
 
     id = Column(Integer, primary_key=True)
     keyword_file = Column(String)
@@ -43,32 +55,34 @@ class ScraperSearch(Base):
     stopped_searching = Column(DateTime)
 
     serps = relationship(
-        'SearchEngineResultsPage',
+        "SearchEngineResultsPage",
         secondary=scraper_searches_serps,
-        backref=backref('scraper_searches', uselist=True)
+        backref=backref("scraper_searches", uselist=True),
     )
 
     def __str__(self):
-        return '<ScraperSearch[{id}] scraped for {number_search_queries} unique keywords. Started scraping: {started_' \
-               'searching} and stopped: {stopped_searching}>'.format(**self.__dict__)
+        return (
+            "<ScraperSearch[{id}] scraped for {number_search_queries} unique keywords. Started scraping: {started_"
+            "searching} and stopped: {stopped_searching}>".format(**self.__dict__)
+        )
 
     def __repr__(self):
         return self.__str__()
 
 
 class SearchEngineResultsPage(Base):
-    __tablename__ = 'serp'
+    __tablename__ = "serp"
 
     id = Column(Integer, primary_key=True)
-    status = Column(String, default='successful')
+    status = Column(String, default="successful")
     search_engine_name = Column(String)
     scrape_method = Column(String)
     page_number = Column(Integer)
     requested_at = Column(DateTime, default=datetime.datetime.utcnow)
-    requested_by = Column(String, default='127.0.0.1')
+    requested_by = Column(String, default="127.0.0.1")
 
     # The string in the SERP that indicates how many results we got for the search term.
-    num_results_for_query = Column(String, default='')
+    num_results_for_query = Column(String, default="")
 
     # Whether we got any results at all. This is the same as len(serp.links)
     num_results = Column(Integer, default=-1)
@@ -78,7 +92,7 @@ class SearchEngineResultsPage(Base):
     # if the query was modified by the search engine because there weren't any
     # results, this variable is set to the query that was used instead.
     # Otherwise it remains empty.
-    effective_query = Column(String, default='')
+    effective_query = Column(String, default="")
 
     # Whether the search engine has no results.
     # This is not the same as num_results, because some search engines
@@ -91,7 +105,8 @@ class SearchEngineResultsPage(Base):
 
     def __str__(self):
         return '<SERP[{search_engine_name}] has [{num_results}] link results for query "{query}">'.format(
-            **self.__dict__)
+            **self.__dict__
+        )
 
     def __repr__(self):
         return self.__str__()
@@ -118,22 +133,32 @@ class SearchEngineResultsPage(Base):
         for key, value in parser.search_results.items():
             if isinstance(value, list):
                 for link in value:
-                    parsed = urlparse(link['link'])
+                    parsed = urlparse(link["link"])
 
                     # fill with nones to prevent key errors
-                    [link.update({key: None}) for key in ('snippet', 'title', 'visible_link', 'rating', 'num_reviews') if key not in link]
+                    [
+                        link.update({key: None})
+                        for key in (
+                            "snippet",
+                            "title",
+                            "visible_link",
+                            "rating",
+                            "num_reviews",
+                        )
+                        if key not in link
+                    ]
 
                     Link(
-                        link=link['link'],
-                        snippet=link['snippet'],
-                        title=link['title'],
-                        visible_link=link['visible_link'],
-                        rating=link['rating'],
-                        num_reviews=link['num_reviews'],
+                        link=link["link"],
+                        snippet=link["snippet"],
+                        title=link["title"],
+                        visible_link=link["visible_link"],
+                        rating=link["rating"],
+                        num_reviews=link["num_reviews"],
                         domain=parsed.netloc,
-                        rank=link['rank'],
+                        rank=link["rank"],
                         serp=self,
-                        link_type=key
+                        link_type=key,
                     )
 
     def set_values_from_scraper(self, scraper):
@@ -158,7 +183,7 @@ class SearchEngineResultsPage(Base):
         self.status = scraper.status
 
     def was_correctly_requested(self):
-        return self.status == 'successful'
+        return self.status == "successful"
 
 
 # Alias as a shorthand for working in the shell
@@ -166,7 +191,7 @@ SERP = SearchEngineResultsPage
 
 
 class Link(Base):
-    __tablename__ = 'link'
+    __tablename__ = "link"
 
     id = Column(Integer, primary_key=True)
     title = Column(String)
@@ -179,24 +204,24 @@ class Link(Base):
     rank = Column(Integer)
     link_type = Column(String)
 
-    serp_id = Column(Integer, ForeignKey('serp.id'))
-    serp = relationship(SearchEngineResultsPage, backref=backref('links', uselist=True))
+    serp_id = Column(Integer, ForeignKey("serp.id"))
+    serp = relationship(SearchEngineResultsPage, backref=backref("links", uselist=True))
 
     def __str__(self):
-        return '<Link at rank {rank} has url: {link}>'.format(**self.__dict__)
+        return "<Link at rank {rank} has url: {link}>".format(**self.__dict__)
 
     def __repr__(self):
         return self.__str__()
 
 
 class Proxy(Base):
-    __tablename__ = 'proxy'
+    __tablename__ = "proxy"
 
     id = Column(Integer, primary_key=True)
     ip = Column(String)
     hostname = Column(String)
     port = Column(Integer)
-    proto = Column(Enum('socks5', 'socks4', 'http'))
+    proto = Column(Enum("socks5", "socks4", "http"))
     username = Column(String)
     password = Column(String)
 
@@ -212,10 +237,10 @@ class Proxy(Base):
     org = Column(String)
     postal = Column(String)
 
-    UniqueConstraint(ip, port, name='unique_proxy')
+    UniqueConstraint(ip, port, name="unique_proxy")
 
     def __str__(self):
-        return '<Proxy {ip}>'.format(**self.__dict__)
+        return "<Proxy {ip}>".format(**self.__dict__)
 
     def __repr__(self):
         return self.__str__()
@@ -225,7 +250,7 @@ db_Proxy = Proxy
 
 
 class SearchEngine(Base):
-    __tablename__ = 'search_engine'
+    __tablename__ = "search_engine"
 
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True)
@@ -236,15 +261,15 @@ class SearchEngine(Base):
 
 class SearchEngineProxyStatus(Base):
     """Stores last proxy status for the given search engine.
-    
+
     A proxy can either work on a search engine or not.
     """
 
-    __tablename__ = 'search_engine_proxy_status'
+    __tablename__ = "search_engine_proxy_status"
 
     id = Column(Integer, primary_key=True)
-    proxy_id = Column(Integer, ForeignKey('proxy.id'))
-    search_engine_id = Column(Integer, ForeignKey('search_engine.id'))
+    proxy_id = Column(Integer, ForeignKey("proxy.id"))
+    search_engine_id = Column(Integer, ForeignKey("search_engine.id"))
     available = Column(Boolean)
     last_check = Column(DateTime)
 
@@ -258,9 +283,11 @@ def get_engine(config, path=None):
     Returns:
         The sqlalchemy engine.
     """
-    db_path = path if path else config.get('database_name', 'google_scraper') + '.db'
-    echo = config.get('log_sqlalchemy', False)
-    engine = create_engine('sqlite:///' + db_path, echo=echo, connect_args={'check_same_thread': False})
+    db_path = path if path else config.get("database_name", "google_scraper") + ".db"
+    echo = config.get("log_sqlalchemy", False)
+    engine = create_engine(
+        "sqlite:///" + db_path, echo=echo, connect_args={"check_same_thread": False}
+    )
     Base.metadata.create_all(engine)
 
     return engine
@@ -286,9 +313,11 @@ def get_session(config, scoped=False, engine=None, path=None):
 def fixtures(config, session):
     """Add some base data."""
 
-    for se in config.get('supported_search_engines', []):
+    for se in config.get("supported_search_engines", []):
         if se:
-            search_engine = session.query(SearchEngine).filter(SearchEngine.name == se).first()
+            search_engine = (
+                session.query(SearchEngine).filter(SearchEngine.name == se).first()
+            )
             if not search_engine:
                 session.add(SearchEngine(name=se))
 

@@ -10,7 +10,11 @@ import queue
 from GoogleScraper.log import setup_logger
 from GoogleScraper.commandline import get_command_line
 from GoogleScraper.database import ScraperSearch, SERP, Link, get_session, fixtures
-from GoogleScraper.proxies import parse_proxy_file, get_proxies_from_mysql_db, add_proxies_to_db
+from GoogleScraper.proxies import (
+    parse_proxy_file,
+    get_proxies_from_mysql_db,
+    add_proxies_to_db,
+)
 from GoogleScraper.caching import CacheManager
 from GoogleScraper.config import get_config
 from GoogleScraper.scrape_jobs import default_scrape_jobs_for_keywords
@@ -26,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 class WrongConfigurationError(Exception):
     pass
+
 
 def id_for_keywords(keywords):
     """Determine a unique id for the keywords.
@@ -58,14 +63,16 @@ def scrape_with_config(config):
     """
     if not isinstance(config, dict):
         raise ValueError(
-            'The config parameter needs to be a configuration dictionary. Given parameter has type: {}'.format(
-                type(config)))
+            "The config parameter needs to be a configuration dictionary. Given parameter has type: {}".format(
+                type(config)
+            )
+        )
 
     return main(return_results=True, parse_cmd_line=False, config_from_dict=config)
 
 
 # taken from https://github.com/scrapy/utils/console.py
-def start_python_console(namespace=None, noipython=False, banner=''):
+def start_python_console(namespace=None, noipython=False, banner=""):
     """Start Python console bound to the given namespace. If IPython is
     available, an IPython console will be started instead, unless `noipython`
     is True. Also, tab completion will be used on Unix systems.
@@ -87,7 +94,8 @@ def start_python_console(namespace=None, noipython=False, banner=''):
 
             config = load_default_config()
             shell = InteractiveShellEmbed(
-                banner1=banner, user_ns=namespace, config=config)
+                banner1=banner, user_ns=namespace, config=config
+            )
             shell()
         except ImportError:
             import code
@@ -123,18 +131,21 @@ class ShowProgressQueue(threading.Thread):
         self.queue = queue
         self.num_keywords = num_keywords
         self.num_already_processed = 0
-        self.progress_fmt = '\033[92m{}/{} keywords processed.\033[0m'
+        self.progress_fmt = "\033[92m{}/{} keywords processed.\033[0m"
 
     def run(self):
         while self.num_already_processed < self.num_keywords:
             e = self.queue.get()
 
-            if e == 'done':
+            if e == "done":
                 break
 
             self.num_already_processed += 1
 
-            print(self.progress_fmt.format(self.num_already_processed, self.num_keywords), end='\r')
+            print(
+                self.progress_fmt.format(self.num_already_processed, self.num_keywords),
+                end="\r",
+            )
 
             # TODO: FIX THIS!
             # self.verbosity == 2 and self.num_already_processed % 5 == 0:
@@ -163,37 +174,45 @@ def main(return_results=False, parse_cmd_line=True, config_from_dict=None):
     if parse_cmd_line:
         cmd_line_args = get_command_line()
 
-        if cmd_line_args.get('config_file', None):
-            external_config_file_path = os.path.abspath(cmd_line_args.get('config_file'))
+        if cmd_line_args.get("config_file", None):
+            external_config_file_path = os.path.abspath(
+                cmd_line_args.get("config_file")
+            )
 
     config = get_config(cmd_line_args, external_config_file_path, config_from_dict)
 
-    if isinstance(config['log_level'], int):
-        config['log_level'] = logging.getLevelName(config['log_level'])
+    if isinstance(config["log_level"], int):
+        config["log_level"] = logging.getLevelName(config["log_level"])
 
-    setup_logger(level=config.get('log_level').upper(), format=config.get('log_format'), logfile=config.get('log_file'))
+    setup_logger(
+        level=config.get("log_level").upper(),
+        format=config.get("log_format"),
+        logfile=config.get("log_file"),
+    )
 
-    if config.get('view_config', False):
-        print(open(os.path.join(get_base_path(), 'scrape_config.py')).read())
+    if config.get("view_config", False):
+        print(open(os.path.join(get_base_path(), "scrape_config.py")).read())
         return
 
-    if config.get('version'):
+    if config.get("version"):
         from GoogleScraper.version import __version__
+
         print(__version__)
         return
 
-    if config.get('clean', False):
+    if config.get("clean", False):
         try:
-            os.remove('google_scraper.db')
-            if sys.platform == 'linux':
-                os.system('rm {}/*'.format(config.get('cachedir')))
+            os.remove("google_scraper.db")
+            if sys.platform == "linux":
+                os.system("rm {}/*".format(config.get("cachedir")))
         except:
             pass
         return
 
-    search_engine_name = config.get('check_detection', None)
+    search_engine_name = config.get("check_detection", None)
     if search_engine_name:
         from GoogleScraper.selenium_mode import check_detection
+
         code, status = check_detection(config, search_engine_name)
         logger.debug(status)
         print(code)
@@ -201,104 +220,135 @@ def main(return_results=False, parse_cmd_line=True, config_from_dict=None):
 
     init_outfile(config, force_reload=True)
 
-    kwfile = config.get('keyword_file', '')
+    kwfile = config.get("keyword_file", "")
     if kwfile:
         kwfile = os.path.abspath(kwfile)
 
-    keyword = config.get('keyword')
-    keywords = set(config.get('keywords', []))
-    proxy_file = config.get('proxy_file', '')
-    proxy_db = config.get('mysql_proxy_db', '')
+    keyword = config.get("keyword")
+    keywords = set(config.get("keywords", []))
+    proxy_file = config.get("proxy_file", "")
+    proxy_db = config.get("mysql_proxy_db", "")
 
     # when no search engine is specified, use google
-    search_engines = config.get('search_engines', ['google',])
+    search_engines = config.get(
+        "search_engines",
+        [
+            "google",
+        ],
+    )
     if not isinstance(search_engines, list):
-        if search_engines == '*':
-            search_engines = config.get('supported_search_engines')
+        if search_engines == "*":
+            search_engines = config.get("supported_search_engines")
         else:
-            search_engines = search_engines.split(',')
+            search_engines = search_engines.split(",")
 
-    assert isinstance(search_engines, list), 'Search engines must be a list like data type!'
+    assert isinstance(
+        search_engines, list
+    ), "Search engines must be a list like data type!"
     search_engines = list(map(lambda x: x.lower(), set(search_engines)))
 
     for engine in search_engines:
-        assert engine in config.get('supported_search_engines'), 'Search engine "{}" not supported.'.format(engine)
+        assert engine in config.get(
+            "supported_search_engines"
+        ), 'Search engine "{}" not supported.'.format(engine)
 
     num_search_engines = len(search_engines)
-    num_workers = int(config.get('num_workers'))
-    scrape_method = config.get('scrape_method')
-    pages = int(config.get('num_pages_for_keyword', 1))
-    method = config.get('scrape_method', 'http')
+    num_workers = int(config.get("num_workers"))
+    scrape_method = config.get("scrape_method")
+    pages = int(config.get("num_pages_for_keyword", 1))
+    method = config.get("scrape_method", "http")
 
-    if config.get('shell', False):
+    if config.get("shell", False):
         namespace = {}
         session_cls = get_session(config, scoped=False)
-        namespace['session'] = session_cls()
-        namespace['ScraperSearch'] = ScraperSearch
-        namespace['SERP'] = SERP
-        namespace['Link'] = Link
-        namespace['Proxy'] = GoogleScraper.database.Proxy
-        print('Available objects:')
-        print('session - A sqlalchemy session of the results database')
-        print('ScraperSearch - Search/Scrape job instances')
-        print('SERP - A search engine results page')
-        print('Link - A single link belonging to a SERP')
-        print('Proxy - Proxies stored for scraping projects.')
+        namespace["session"] = session_cls()
+        namespace["ScraperSearch"] = ScraperSearch
+        namespace["SERP"] = SERP
+        namespace["Link"] = Link
+        namespace["Proxy"] = GoogleScraper.database.Proxy
+        print("Available objects:")
+        print("session - A sqlalchemy session of the results database")
+        print("ScraperSearch - Search/Scrape job instances")
+        print("SERP - A search engine results page")
+        print("Link - A single link belonging to a SERP")
+        print("Proxy - Proxies stored for scraping projects.")
         start_python_console(namespace)
         return
 
     if not (keyword or keywords) and not kwfile:
         # Just print the help.
         get_command_line(True)
-        print('No keywords to scrape for. Please provide either an keyword file (Option: --keyword-file) or specify and '
-            'keyword with --keyword.')
+        print(
+            "No keywords to scrape for. Please provide either an keyword file (Option: --keyword-file) or specify and "
+            "keyword with --keyword."
+        )
         return
 
     cache_manager = CacheManager(config)
 
-    if config.get('fix_cache_names'):
+    if config.get("fix_cache_names"):
         cache_manager.fix_broken_cache_names()
-        logger.info('renaming done. restart for normal use.')
+        logger.info("renaming done. restart for normal use.")
         return
 
-    keywords = [keyword, ] if keyword else keywords
+    keywords = (
+        [
+            keyword,
+        ]
+        if keyword
+        else keywords
+    )
     scrape_jobs = {}
     if kwfile:
         if not os.path.exists(kwfile):
-            raise WrongConfigurationError('The keyword file {} does not exist.'.format(kwfile))
+            raise WrongConfigurationError(
+                "The keyword file {} does not exist.".format(kwfile)
+            )
         else:
-            if kwfile.endswith('.py'):
+            if kwfile.endswith(".py"):
                 # we need to import the variable "scrape_jobs" from the module.
                 sys.path.append(os.path.dirname(kwfile))
                 try:
-                    modname = os.path.split(kwfile)[-1].rstrip('.py')
-                    scrape_jobs = getattr(__import__(modname, fromlist=['scrape_jobs']), 'scrape_jobs')
+                    modname = os.path.split(kwfile)[-1].rstrip(".py")
+                    scrape_jobs = getattr(
+                        __import__(modname, fromlist=["scrape_jobs"]), "scrape_jobs"
+                    )
                 except ImportError as e:
                     logger.warning(e)
             else:
                 # Clean the keywords of duplicates right in the beginning
                 # But make sure to keep the order
-                keywords = [line.strip() for line in open(kwfile, 'r', encoding='utf-8').read().split('\n') if line.strip()]
+                keywords = [
+                    line.strip()
+                    for line in open(kwfile, "r", encoding="utf-8").read().split("\n")
+                    if line.strip()
+                ]
                 # this is the fastest in Python 3.6 and 3.7: https://stackoverflow.com/questions/7961363/removing-duplicates-in-lists
                 keywords = list(dict.fromkeys(keywords))
 
     if not scrape_jobs:
-        scrape_jobs = default_scrape_jobs_for_keywords(keywords, search_engines, scrape_method, pages)
+        scrape_jobs = default_scrape_jobs_for_keywords(
+            keywords, search_engines, scrape_method, pages
+        )
 
     scrape_jobs = list(scrape_jobs)
 
-    if config.get('clean_cache_files', False):
+    if config.get("clean_cache_files", False):
         cache_manager.clean_cachefiles()
         return
 
-    if config.get('check_oto', False):
+    if config.get("check_oto", False):
         cache_manager._caching_is_one_to_one(keyword)
 
-    if config.get('num_results_per_page') > 100:
-        raise WrongConfigurationError('Not more that 100 results per page available for searches.')
+    if config.get("num_results_per_page") > 100:
+        raise WrongConfigurationError(
+            "Not more that 100 results per page available for searches."
+        )
 
-    if config.get('num_results_per_page') < 10:
-        raise WrongConfigurationError('num_results_per_page must be 10,20,30,40,50 or 100 with Google and in the range(10,100) with other search engines.')
+    if config.get("num_results_per_page") < 10:
+        raise WrongConfigurationError(
+            "num_results_per_page must be 10,20,30,40,50 or 100 with Google and in the range(10,100) with other search engines."
+        )
 
     proxies = []
 
@@ -307,33 +357,51 @@ def main(return_results=False, parse_cmd_line=True, config_from_dict=None):
     elif proxy_file:
         proxies = parse_proxy_file(proxy_file)
 
-    if config.get('use_own_ip'):
+    if config.get("use_own_ip"):
         proxies.append(None)
 
     if not proxies:
-        raise Exception('No proxies available and using own IP is prohibited by configuration. Turning down.')
+        raise Exception(
+            "No proxies available and using own IP is prohibited by configuration. Turning down."
+        )
 
-    valid_search_types = ('normal', 'video', 'news', 'image')
-    if config.get('search_type') not in valid_search_types:
-        raise WrongConfigurationError('Invalid search type! Select one of {}'.format(repr(valid_search_types)))
+    valid_search_types = ("normal", "video", "news", "image")
+    if config.get("search_type") not in valid_search_types:
+        raise WrongConfigurationError(
+            "Invalid search type! Select one of {}".format(repr(valid_search_types))
+        )
 
-    if config.get('simulate', False):
-        print('*' * 60 + 'SIMULATION' + '*' * 60)
-        logger.info('If GoogleScraper would have been run without the --simulate flag, it would have:')
-        logger.info('Scraped for {} keywords, with {} results a page, in total {} pages for each keyword'.format(
-            len(keywords), int(config.get('num_results_per_page', 0)),
-            int(config.get('num_pages_for_keyword'))))
+    if config.get("simulate", False):
+        print("*" * 60 + "SIMULATION" + "*" * 60)
+        logger.info(
+            "If GoogleScraper would have been run without the --simulate flag, it would have:"
+        )
+        logger.info(
+            "Scraped for {} keywords, with {} results a page, in total {} pages for each keyword".format(
+                len(keywords),
+                int(config.get("num_results_per_page", 0)),
+                int(config.get("num_pages_for_keyword")),
+            )
+        )
         if None in proxies:
-            logger.info('Also using own ip address to scrape.')
+            logger.info("Also using own ip address to scrape.")
         else:
-            logger.info('Not scraping with own ip address.')
-        logger.info('Used {} unique ip addresses in total'.format(len(proxies)))
+            logger.info("Not scraping with own ip address.")
+        logger.info("Used {} unique ip addresses in total".format(len(proxies)))
         if proxies:
-            logger.info('The following proxies are used: \n\t\t{}'.format(
-                '\n\t\t'.join([proxy.host + ':' + proxy.port for proxy in proxies if proxy])))
+            logger.info(
+                "The following proxies are used: \n\t\t{}".format(
+                    "\n\t\t".join(
+                        [proxy.host + ":" + proxy.port for proxy in proxies if proxy]
+                    )
+                )
+            )
 
-        logger.info('By using {} mode with {} worker instances'.format(config.get('scrape_method'),
-                                                                       int(config.get('num_workers'))))
+        logger.info(
+            "By using {} mode with {} worker instances".format(
+                config.get("scrape_method"), int(config.get("num_workers"))
+            )
+        )
         return
 
     # get a scoped sqlalchemy session
@@ -350,20 +418,24 @@ def main(return_results=False, parse_cmd_line=True, config_from_dict=None):
     # previously established scrape, if the keyword-file is the same and unmodified since
     # the beginning of the last scrape.
     scraper_search = None
-    if kwfile and config.get('continue_last_scrape', False):
-        searches = session.query(ScraperSearch). \
-            filter(ScraperSearch.keyword_file == kwfile). \
-            order_by(ScraperSearch.started_searching). \
-            all()
+    if kwfile and config.get("continue_last_scrape", False):
+        searches = (
+            session.query(ScraperSearch)
+            .filter(ScraperSearch.keyword_file == kwfile)
+            .order_by(ScraperSearch.started_searching)
+            .all()
+        )
 
         if searches:
             last_search = searches[-1]
-            last_modified = datetime.datetime.utcfromtimestamp(os.path.getmtime(last_search.keyword_file))
+            last_modified = datetime.datetime.utcfromtimestamp(
+                os.path.getmtime(last_search.keyword_file)
+            )
 
             # if the last modification is older then the starting of the search
             if last_modified < last_search.started_searching:
                 scraper_search = last_search
-                logger.info('Continuing last scrape.')
+                logger.info("Continuing last scrape.")
 
     if not scraper_search:
         scraper_search = ScraperSearch(
@@ -372,12 +444,14 @@ def main(return_results=False, parse_cmd_line=True, config_from_dict=None):
             number_proxies_used=len(proxies),
             number_search_queries=len(keywords),
             started_searching=datetime.datetime.utcnow(),
-            used_search_engines=','.join(search_engines)
+            used_search_engines=",".join(search_engines),
         )
 
     # First of all, lets see how many requests remain to issue after searching the cache.
-    if config.get('do_caching'):
-        scrape_jobs = cache_manager.parse_all_cached_files(scrape_jobs, session, scraper_search)
+    if config.get("do_caching"):
+        scrape_jobs = cache_manager.parse_all_cached_files(
+            scrape_jobs, session, scraper_search
+        )
 
     if scrape_jobs:
 
@@ -390,15 +464,18 @@ def main(return_results=False, parse_cmd_line=True, config_from_dict=None):
         # A lock to prevent multiple threads from solving captcha, used in selenium instances.
         captcha_lock = threading.Lock()
 
-        logger.info('Going to scrape {num_keywords} keywords with {num_proxies} proxies by using {num_threads} threads.'.format(
-            num_keywords=len(list(scrape_jobs)),
-            num_proxies=len(proxies),
-            num_threads=num_search_engines))
+        logger.info(
+            "Going to scrape {num_keywords} keywords with {num_proxies} proxies by using {num_threads} threads.".format(
+                num_keywords=len(list(scrape_jobs)),
+                num_proxies=len(proxies),
+                num_threads=num_search_engines,
+            )
+        )
 
         progress_thread = None
 
         # Let the games begin
-        if method in ('selenium', 'http'):
+        if method in ("selenium", "http"):
 
             # Show the progress of the scraping
             q = queue.Queue()
@@ -426,7 +503,7 @@ def main(return_results=False, parse_cmd_line=True, config_from_dict=None):
                                 scraper_search=scraper_search,
                                 captcha_lock=captcha_lock,
                                 progress_queue=q,
-                                browser_num=num_worker
+                                browser_num=num_worker,
                             )
                         )
 
@@ -455,18 +532,27 @@ def main(return_results=False, parse_cmd_line=True, config_from_dict=None):
                 t.join()
 
             # after threads are done, stop the progress queue.
-            q.put('done')
+            q.put("done")
             progress_thread.join()
 
-        elif method == 'http-async':
-            scheduler = AsyncScrapeScheduler(config, scrape_jobs, cache_manager=cache_manager, session=session, scraper_search=scraper_search,
-                                             db_lock=db_lock)
+        elif method == "http-async":
+            scheduler = AsyncScrapeScheduler(
+                config,
+                scrape_jobs,
+                cache_manager=cache_manager,
+                session=session,
+                scraper_search=scraper_search,
+                db_lock=db_lock,
+            )
             scheduler.run()
 
         else:
-            raise Exception('No such scrape_method {}'.format(config.get('scrape_method')))
+            raise Exception(
+                "No such scrape_method {}".format(config.get("scrape_method"))
+            )
 
     from GoogleScraper.output_converter import close_outfile
+
     close_outfile()
 
     scraper_search.stopped_searching = datetime.datetime.utcnow()

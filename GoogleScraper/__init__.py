@@ -5,9 +5,9 @@ I switched my motto; instead of saying "fuck tomorrow"
 That buck that bought a bottle could've struck the lotto.
 """
 
-__author__ = 'Nikolai Tschacher'
-__updated__ = '18.08.2018'  # day.month.year
-__home__ = 'incolumitas.com'
+__author__ = "Nikolai Tschacher"
+__updated__ = "18.08.2018"  # day.month.year
+__home__ = "incolumitas.com"
 
 from GoogleScraper.proxies import Proxy
 from GoogleScraper.config import get_config

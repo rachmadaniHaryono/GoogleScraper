@@ -10,13 +10,20 @@ try:
 
     def load_source(name, path):
         return SourceFileLoader(name, path).load_module()
+
+
 except ImportError:
     # but it does not exist in 3.2-, so fall back to imp
     import imp
+
     load_source = imp.load_source
 
 
-def get_config(command_line_args=None, external_configuration_file=None, config_from_library_call=None):
+def get_config(
+    command_line_args=None,
+    external_configuration_file=None,
+    config_from_library_call=None,
+):
     """
     Parse the configuration from different sources:
         - Internal config file
@@ -44,8 +51,10 @@ def get_config(command_line_args=None, external_configuration_file=None, config_
             setattr(config, k, v)
 
     if external_configuration_file:
-        if os.path.exists(external_configuration_file) and external_configuration_file.endswith('.py'):
-            exernal_config = load_source('external_config', external_configuration_file)
+        if os.path.exists(
+            external_configuration_file
+        ) and external_configuration_file.endswith(".py"):
+            exernal_config = load_source("external_config", external_configuration_file)
             members = inspect.getmembers(exernal_config)
             if isinstance(members, list):
                 members = dict(members)
@@ -57,6 +66,6 @@ def get_config(command_line_args=None, external_configuration_file=None, config_
     if config_from_library_call:
         update_members(config_from_library_call)
 
-    config = {k: v for k, v in vars(config).items() if not k.startswith('_')}
+    config = {k: v for k, v in vars(config).items() if not k.startswith("_")}
 
     return config

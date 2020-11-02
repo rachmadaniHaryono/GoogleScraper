@@ -5,12 +5,14 @@ from GoogleScraper import scrape_with_config, GoogleSearchError
 
 # See in the config.cfg file for possible values
 config = {
-    'use_own_ip': True,
-    'keyword': 'reddit',
-    'search_engines': ['bing',],
-    'num_pages_for_keyword': 2,
-    'scrape_method': 'selenium',
-    'sel_browser': 'chrome',
+    "use_own_ip": True,
+    "keyword": "reddit",
+    "search_engines": [
+        "bing",
+    ],
+    "num_pages_for_keyword": 2,
+    "scrape_method": "selenium",
+    "sel_browser": "chrome",
 }
 
 try:

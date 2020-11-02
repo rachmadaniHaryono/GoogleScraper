@@ -28,6 +28,7 @@ Python's developers strive to avoid premature optimization, and moreover, reject
 An important goal of the Python developers is making Python fun to use. This is reflected in the origin of the name which comes from Monty Python,[42] and in an occasionally playful approach to tutorials and reference materials, for example using spam and eggs instead of the standard foo and bar.[43][44]
 """
 
+
 def make_chunks(text):
     """Splits the text in chunks suitable for a single search query.
 
@@ -44,11 +45,11 @@ def make_chunks(text):
         Quoted chunks to use in google.
     """
     # normalize text
-    text = text.replace('\n', '').replace('\t', '')
+    text = text.replace("\n", "").replace("\t", "")
 
     chunks = []
 
-    sentences = text.split('.')
+    sentences = text.split(".")
     for sentence in sentences:
 
         if len(sentence) in range(25, 125):
@@ -58,25 +59,26 @@ def make_chunks(text):
             # just ignore this for now. Short sentences are not usable anyways.
         elif len(sentence) > 125:
             chunks.extend(
-                ['"{}"'.format(s) for s in sentence.split(',') if len(s) > 25]
+                ['"{}"'.format(s) for s in sentence.split(",") if len(s) > 25]
             )
 
     return chunks
 
+
 # write the chunks to a file
-with open('chunks.txt', 'wt') as f:
+with open("chunks.txt", "wt") as f:
 
     for chunk in make_chunks(text):
-        f.write(chunk + '\n')
+        f.write(chunk + "\n")
 
 # # See in the config.cfg file for possible values
 config = {
-    'use_own_ip': True,
-    'keyword_file': 'chunks.txt',
-    'search_engines': ['google'],
-    'num_pages_for_keyword': 1,
-    'scrape_method': 'selenium',
-    'sel_browser': 'chrome',
+    "use_own_ip": True,
+    "keyword_file": "chunks.txt",
+    "search_engines": ["google"],
+    "num_pages_for_keyword": 1,
+    "scrape_method": "selenium",
+    "sel_browser": "chrome",
 }
 
 try:

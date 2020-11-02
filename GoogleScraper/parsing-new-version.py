@@ -25,16 +25,16 @@ class NoParserForSearchEngineException(Exception):
     pass
 
 
-class Parser():
+class Parser:
     """Parses SERP pages.
 
     Each search engine results page (SERP) has a similar layout:
-    
+
     The main search results are usually in a html container element (#main, .results, #leftSide).
-    There might be separate columns for other search results (like ads for example). Then each 
+    There might be separate columns for other search results (like ads for example). Then each
     result contains basically a link, a snippet and a description (usually some text on the
     target site). It's really astonishing how similar other search engines are to Google.
-    
+
     Each child class (that can actual parse a concrete search engine results page) needs
     to specify css selectors for the different search types (Like normal search, news search, video search, ...).
 
@@ -68,36 +68,37 @@ class Parser():
     # If you didn't specify the search type in the search_types list, this attribute
     # will not be evaluated and no data will be parsed.
 
-    def __init__(self, search_type='normal', html='', query=''):
+    def __init__(self, search_type="normal", html="", query=""):
         """Create new Parser instance and parse all information.
 
         Args:
-            html: The raw html from the search engine search. If not provided, you can parse 
+            html: The raw html from the search engine search. If not provided, you can parse
                     the data later by calling parse(html) directly.
             searchtype: The search type. By default "normal"
-            
+
         Raises:
             Assertion error if the subclassed
             specific parser cannot handle the the settings.
         """
         self.searchtype = search_type
-        assert self.searchtype in self.search_types, 'search type "{}" is not supported in {}'.format(
-            self.searchtype,
-            self.__class__.__name__
+        assert (
+            self.searchtype in self.search_types
+        ), 'search type "{}" is not supported in {}'.format(
+            self.searchtype, self.__class__.__name__
         )
 
         self.query = query
         self.html = html
         self.dom = None
         self.search_results = {}
-        self.num_results_for_query = ''
+        self.num_results_for_query = ""
         self.num_results = 0
-        self.effective_query = ''
+        self.effective_query = ""
         self.page_number = -1
         self.no_results = False
 
         # to be set by the implementing sub classes
-        self.search_engine = ''
+        self.search_engine = ""
 
         # short alias because we use it so extensively
         self.css_to_xpath = HTMLTranslator().css_to_xpath
@@ -107,8 +108,8 @@ class Parser():
 
     def parse(self, html=None):
         """Public function to start parsing the search engine results.
-        
-        Args: 
+
+        Args:
             html: The raw html data to extract the SERP entries from.
         """
         if html:
@@ -124,7 +125,7 @@ class Parser():
 
     def _parse_lxml(self, cleaner=None):
         try:
-            parser = lxml.html.HTMLParser(encoding='utf-8')
+            parser = lxml.html.HTMLParser(encoding="utf-8")
             if cleaner:
                 self.dom = cleaner.clean_html(self.dom)
             self.dom = lxml.html.document_fromstring(self.html, parser=parser)
@@ -135,44 +136,54 @@ class Parser():
 
     def _parse(self, cleaner=None):
         """Internal parse the dom according to the provided css selectors.
-        
+
         Raises: InvalidSearchTypeException if no css selectors for the searchtype could be found.
         """
         self.num_results = 0
         self._parse_lxml(cleaner)
 
         # try to parse the number of results.
-        attr_name = self.searchtype + '_search_selectors'
+        attr_name = self.searchtype + "_search_selectors"
         selector_dict = getattr(self, attr_name, None)
 
         # get the appropriate css selectors for the num_results for the keyword
-        num_results_selector = getattr(self, 'num_results_search_selectors', None)
+        num_results_selector = getattr(self, "num_results_search_selectors", None)
 
         self.num_results_for_query = self.first_match(num_results_selector, self.dom)
         if not self.num_results_for_query:
-            logger.debug('{}: Cannot parse num_results from serp page with selectors {}'.format(self.__class__.__name__,
-                                                                                       num_results_selector))
+            logger.debug(
+                "{}: Cannot parse num_results from serp page with selectors {}".format(
+                    self.__class__.__name__, num_results_selector
+                )
+            )
 
         # get the current page we are at. Sometimes we search engines don't show this.
         try:
-            self.page_number = int(self.first_match(self.page_number_selectors, self.dom))
+            self.page_number = int(
+                self.first_match(self.page_number_selectors, self.dom)
+            )
         except ValueError:
             self.page_number = -1
 
         # let's see if the search query was shitty (no results for that query)
         self.effective_query = self.first_match(self.effective_query_selector, self.dom)
         if self.effective_query:
-            logger.debug('{}: There was no search hit for the search query. Search engine used {} instead.'.format(
-                self.__class__.__name__, self.effective_query))
+            logger.debug(
+                "{}: There was no search hit for the search query. Search engine used {} instead.".format(
+                    self.__class__.__name__, self.effective_query
+                )
+            )
         else:
-            self.effective_query = ''
+            self.effective_query = ""
 
         # the element that notifies the user about no results.
         self.no_results_text = self.first_match(self.no_results_selector, self.dom)
 
         # get the stuff that is of interest in SERP pages.
         if not selector_dict and not isinstance(selector_dict, dict):
-            raise InvalidSearchTypeException('There is no such attribute: {}. No selectors found'.format(attr_name))
+            raise InvalidSearchTypeException(
+                "There is no such attribute: {}. No selectors found".format(attr_name)
+            )
 
         for result_type, selector_class in selector_dict.items():
 
@@ -180,17 +191,17 @@ class Parser():
 
             for selector_specific, selectors in selector_class.items():
 
-                if 'result_container' in selectors and selectors['result_container']:
-                    css = '{container} {result_container}'.format(**selectors)
+                if "result_container" in selectors and selectors["result_container"]:
+                    css = "{container} {result_container}".format(**selectors)
                 else:
-                    css = selectors['container']
+                    css = selectors["container"]
 
-                results = self.dom.xpath(
-                    self.css_to_xpath(css)
-                )
+                results = self.dom.xpath(self.css_to_xpath(css))
 
-                to_extract = set(selectors.keys()) - {'container', 'result_container'}
-                selectors_to_use = {key: selectors[key] for key in to_extract if key in selectors.keys()}
+                to_extract = set(selectors.keys()) - {"container", "result_container"}
+                selectors_to_use = {
+                    key: selectors[key] for key in to_extract if key in selectors.keys()
+                }
 
                 for index, result in enumerate(results):
                     # Let's add primitive support for CSS3 pseudo selectors
@@ -207,11 +218,18 @@ class Parser():
                     for key, selector in selectors_to_use.items():
                         serp_result[key] = self.advanced_css(selector, result)
 
-                    serp_result['rank'] = index + 1
+                    serp_result["rank"] = index + 1
 
                     # Avoid duplicates. Duplicates are serp_result elemnts where the 'link' and 'title' are identical
                     # If statement below: Lazy evaluation. The more probable case first.
-                    if not [e for e in self.search_results[result_type] if (e['link'] == serp_result['link'] and e['title'] == serp_result['title']) ]:
+                    if not [
+                        e
+                        for e in self.search_results[result_type]
+                        if (
+                            e["link"] == serp_result["link"]
+                            and e["title"] == serp_result["title"]
+                        )
+                    ]:
                         self.search_results[result_type].append(serp_result)
                         self.num_results += 1
 
@@ -228,18 +246,22 @@ class Parser():
         """
         value = None
 
-        if selector.endswith('::text'):
+        if selector.endswith("::text"):
             try:
-                value = element.xpath(self.css_to_xpath(selector.split('::')[0]))[0].text_content()
+                value = element.xpath(self.css_to_xpath(selector.split("::")[0]))[
+                    0
+                ].text_content()
             except IndexError:
                 pass
         else:
-            match = re.search(r'::attr\((?P<attr>.*)\)$', selector)
+            match = re.search(r"::attr\((?P<attr>.*)\)$", selector)
 
             if match:
-                attr = match.group('attr')
+                attr = match.group("attr")
                 try:
-                    value = element.xpath(self.css_to_xpath(selector.split('::')[0]))[0].get(attr)
+                    value = element.xpath(self.css_to_xpath(selector.split("::")[0]))[
+                        0
+                    ].get(attr)
                 except IndexError:
                     pass
             else:
@@ -260,7 +282,7 @@ class Parser():
         Returns:
             The very first match or False if all selectors didn't match anything.
         """
-        assert isinstance(selectors, list), 'selectors must be of type list!'
+        assert isinstance(selectors, list), "selectors must be of type list!"
 
         for selector in selectors:
             if selector:
@@ -275,7 +297,7 @@ class Parser():
 
     def after_parsing(self):
         """Subclass specific behaviour after parsing happened.
-        
+
         Override in subclass to add search engine specific behaviour.
         Commonly used to clean the results.
         """
@@ -294,7 +316,7 @@ class Parser():
         cleaner.comments = True
         cleaner.style = True
         self.dom = cleaner.clean_html(self.dom)
-        assert len(self.dom), 'The html needs to be parsed to get the cleaned html'
+        assert len(self.dom), "The html needs to be parsed to get the cleaned html"
         return lxml.html.tostring(self.dom)
 
     def iter_serp_items(self):
@@ -303,7 +325,7 @@ class Parser():
         for key, value in self.search_results.items():
             if isinstance(value, list):
                 for i, item in enumerate(value):
-                    if isinstance(item, dict) and item['link']:
+                    if isinstance(item, dict) and item["link"]:
                         yield (key, i)
 
 
@@ -336,92 +358,90 @@ it very easy to grab all data the site has to offer.
 class GoogleParser(Parser):
     """Parses SERP pages of the Google search engine."""
 
-    search_engine = 'google'
+    search_engine = "google"
 
-    search_types = ['normal', 'image']
+    search_types = ["normal", "image"]
 
-    effective_query_selector = ['#topstuff .med > b::text', '.med > a > b::text']
+    effective_query_selector = ["#topstuff .med > b::text", ".med > a > b::text"]
 
     no_results_selector = []
 
-    num_results_search_selectors = ['#resultStats']
+    num_results_search_selectors = ["#resultStats"]
 
-    page_number_selectors = ['#navcnt td.cur::text']
+    page_number_selectors = ["#navcnt td.cur::text"]
 
     normal_search_selectors = {
-        'results': {
-            'us_ip': {
-                'container': '#center_col',
-                'result_container': 'div.g ',
-                'link': 'h3.r > a:first-child::attr(href)',
-                'snippet': 'div.s span.st::text',
-                'title': 'h3.r > a:first-child::text',
-                'visible_link': 'cite::text'
+        "results": {
+            "us_ip": {
+                "container": "#center_col",
+                "result_container": "div.g ",
+                "link": "h3.r > a:first-child::attr(href)",
+                "snippet": "div.s span.st::text",
+                "title": "h3.r > a:first-child::text",
+                "visible_link": "cite::text",
             },
-            'de_ip': {
-                'container': '#center_col',
-                'result_container': 'li.g ',
-                'link': 'h3.r > a:first-child::attr(href)',
-                'snippet': 'div.s span.st::text',
-                'title': 'h3.r > a:first-child::text',
-                'visible_link': 'cite::text'
+            "de_ip": {
+                "container": "#center_col",
+                "result_container": "li.g ",
+                "link": "h3.r > a:first-child::attr(href)",
+                "snippet": "div.s span.st::text",
+                "title": "h3.r > a:first-child::text",
+                "visible_link": "cite::text",
             },
-            'de_ip_news_items': {
-                'container': 'li.card-section',
-                'link': 'a._Dk::attr(href)',
-                'snippet': 'span._dwd::text',
-                'title': 'a._Dk::text',
-                'visible_link': 'cite::text'
+            "de_ip_news_items": {
+                "container": "li.card-section",
+                "link": "a._Dk::attr(href)",
+                "snippet": "span._dwd::text",
+                "title": "a._Dk::text",
+                "visible_link": "cite::text",
             },
         },
-        'ads_main': {
-            'us_ip': {
-                'container': '#center_col',
-                'result_container': 'li.ads-ad',
-                'link': 'h3.r > a:first-child::attr(href)',
-                'snippet': 'div.s span.st::text',
-                'title': 'h3.r > a:first-child::text',
-                'visible_link': '.ads-visurl cite::text',
+        "ads_main": {
+            "us_ip": {
+                "container": "#center_col",
+                "result_container": "li.ads-ad",
+                "link": "h3.r > a:first-child::attr(href)",
+                "snippet": "div.s span.st::text",
+                "title": "h3.r > a:first-child::text",
+                "visible_link": ".ads-visurl cite::text",
             },
-            'de_ip': {
-                'container': '#center_col',
-                'result_container': '.ads-ad',
-                'link': 'h3 > a:first-child::attr(href)',
-                'snippet': '.ads-creative::text',
-                'title': 'h3 > a:first-child::text',
-                'visible_link': '.ads-visurl cite::text',
-            }
+            "de_ip": {
+                "container": "#center_col",
+                "result_container": ".ads-ad",
+                "link": "h3 > a:first-child::attr(href)",
+                "snippet": ".ads-creative::text",
+                "title": "h3 > a:first-child::text",
+                "visible_link": ".ads-visurl cite::text",
+            },
         },
         # those css selectors are probably not worth much
-        'maps_local': {
-            'de_ip': {
-                'container': '#center_col',
-                'result_container': '.ccBEnf > div',
-                'link': 'link::attr(href)',
-                'snippet': 'div.rl-qs-crs-t::text',
-                'title': 'div[role="heading"] span::text',
-                'rating': 'span.BTtC6e::text',
-                'num_reviews': '.rllt__details::text',
+        "maps_local": {
+            "de_ip": {
+                "container": "#center_col",
+                "result_container": ".ccBEnf > div",
+                "link": "link::attr(href)",
+                "snippet": "div.rl-qs-crs-t::text",
+                "title": 'div[role="heading"] span::text',
+                "rating": "span.BTtC6e::text",
+                "num_reviews": ".rllt__details::text",
             }
         },
-        'ads_aside': {
-
-        }
+        "ads_aside": {},
     }
 
     image_search_selectors = {
-        'results': {
-            'de_ip': {
-                'container': 'li#isr_mc',
-                'result_container': 'div.rg_di',
-                'link': 'a.rg_l::attr(href)'
+        "results": {
+            "de_ip": {
+                "container": "li#isr_mc",
+                "result_container": "div.rg_di",
+                "link": "a.rg_l::attr(href)",
             },
-            'de_ip_raw': {
-                'container': '.images_table',
-                'result_container': 'tr td',
-                'link': 'a::attr(href)',
-                'visible_link': 'cite::text',
-            }
+            "de_ip_raw": {
+                "container": ".images_table",
+                "result_container": "tr td",
+                "link": "a::attr(href)",
+                "visible_link": "cite::text",
+            },
         }
     }
 
@@ -440,80 +460,88 @@ class GoogleParser(Parser):
         """
         super().after_parsing()
 
-        if self.searchtype == 'normal':
+        if self.searchtype == "normal":
             if self.num_results > 0:
                 self.no_results = False
             elif self.num_results <= 0:
                 self.no_results = True
 
-            if 'No results found for' in self.html or 'did not match any documents' in self.html:
+            if (
+                "No results found for" in self.html
+                or "did not match any documents" in self.html
+            ):
                 self.no_results = True
 
             # finally try in the snippets
             if self.no_results is True:
                 for key, i in self.iter_serp_items():
 
-                    if 'snippet' in self.search_results[key][i] and self.query:
-                        if self.query.replace('"', '') in self.search_results[key][i]['snippet']:
+                    if "snippet" in self.search_results[key][i] and self.query:
+                        if (
+                            self.query.replace('"', "")
+                            in self.search_results[key][i]["snippet"]
+                        ):
                             self.no_results = False
 
         clean_regexes = {
-            'normal': r'/url\?q=(?P<url>.*?)&sa=U&ei=',
-            'image': r'imgres\?imgurl=(?P<url>.*?)&'
+            "normal": r"/url\?q=(?P<url>.*?)&sa=U&ei=",
+            "image": r"imgres\?imgurl=(?P<url>.*?)&",
         }
 
         for key, i in self.iter_serp_items():
             result = re.search(
-                clean_regexes[self.searchtype],
-                self.search_results[key][i]['link']
+                clean_regexes[self.searchtype], self.search_results[key][i]["link"]
             )
             if result:
-                self.search_results[key][i]['link'] = unquote(result.group('url'))
+                self.search_results[key][i]["link"] = unquote(result.group("url"))
 
 
 class YandexParser(Parser):
     """Parses SERP pages of the Yandex search engine."""
 
-    search_engine = 'yandex'
+    search_engine = "yandex"
 
-    search_types = ['normal', 'image']
+    search_types = ["normal", "image"]
 
-    no_results_selector = ['.message .misspell__message::text']
+    no_results_selector = [".message .misspell__message::text"]
 
-    effective_query_selector = ['.misspell__message .misspell__link']
+    effective_query_selector = [".misspell__message .misspell__link"]
 
     # @TODO: In december 2015, I saw that yandex only shows the number of search results in the search input field
     # with javascript. One can scrape it in plain http mode, but the values are hidden in some javascript and not
     # accessible with normal xpath/css selectors. A normal text search is done.
-    num_results_search_selectors = ['.serp-list .serp-adv__found::text', '.input__found_visibility_visible font font::text']
+    num_results_search_selectors = [
+        ".serp-list .serp-adv__found::text",
+        ".input__found_visibility_visible font font::text",
+    ]
 
-    page_number_selectors = ['.pager__group .button_checked_yes span::text']
+    page_number_selectors = [".pager__group .button_checked_yes span::text"]
 
     normal_search_selectors = {
-        'results': {
-            'de_ip': {
-                'container': '.serp-list',
-                'result_container': '.serp-item',
-                'link': 'a.link::attr(href)',
-                'snippet': 'div.text-container::text',
-                'title': 'div.organic__url-text::text',
-                'visible_link': '.typo_type_greenurl::text'
+        "results": {
+            "de_ip": {
+                "container": ".serp-list",
+                "result_container": ".serp-item",
+                "link": "a.link::attr(href)",
+                "snippet": "div.text-container::text",
+                "title": "div.organic__url-text::text",
+                "visible_link": ".typo_type_greenurl::text",
             }
         }
     }
 
     image_search_selectors = {
-        'results': {
-            'de_ip': {
-                'container': '.page-layout__content-wrapper',
-                'result_container': '.serp-item__preview',
-                'link': '.serp-item__preview .serp-item__link::attr(onmousedown)'
+        "results": {
+            "de_ip": {
+                "container": ".page-layout__content-wrapper",
+                "result_container": ".serp-item__preview",
+                "link": ".serp-item__preview .serp-item__link::attr(onmousedown)",
             },
-            'de_ip_raw': {
-                'container': '.page-layout__content-wrapper',
-                'result_container': '.serp-item__preview',
-                'link': '.serp-item__preview .serp-item__link::attr(href)'
-            }
+            "de_ip_raw": {
+                "container": ".page-layout__content-wrapper",
+                "result_container": ".serp-item__preview",
+                "link": ".serp-item__preview .serp-item__link::attr(href)",
+            },
         }
     }
 
@@ -536,11 +564,13 @@ class YandexParser(Parser):
         """
         super().after_parsing()
 
-        if self.searchtype == 'normal':
+        if self.searchtype == "normal":
             self.no_results = False
 
             if self.no_results_text:
-                self.no_results = 'По вашему запросу ничего не нашлось' in self.no_results_text
+                self.no_results = (
+                    "По вашему запросу ничего не нашлось" in self.no_results_text
+                )
 
             if self.num_results == 0:
                 self.no_results = True
@@ -551,90 +581,94 @@ class YandexParser(Parser):
                 try:
                     i = self.html.index(substr)
                     if i:
-                        self.num_results_for_query = re.search(r'— (.)*?"', self.html[i:i+len(self.query) + 150]).group()
+                        self.num_results_for_query = re.search(
+                            r'— (.)*?"', self.html[i : i + len(self.query) + 150]
+                        ).group()
                 except Exception as e:
                     logger.debug(str(e))
 
-
-        if self.searchtype == 'image':
+        if self.searchtype == "image":
             for key, i in self.iter_serp_items():
                 for regex in (
-                        r'\{"href"\s*:\s*"(?P<url>.*?)"\}',
-                        r'img_url=(?P<url>.*?)&'
+                    r'\{"href"\s*:\s*"(?P<url>.*?)"\}',
+                    r"img_url=(?P<url>.*?)&",
                 ):
-                    result = re.search(regex, self.search_results[key][i]['link'])
+                    result = re.search(regex, self.search_results[key][i]["link"])
                     if result:
-                        self.search_results[key][i]['link'] = result.group('url')
+                        self.search_results[key][i]["link"] = result.group("url")
                         break
 
 
 class BingParser(Parser):
     """Parses SERP pages of the Bing search engine."""
 
-    search_engine = 'bing'
+    search_engine = "bing"
 
-    search_types = ['normal', 'image']
+    search_types = ["normal", "image"]
 
-    no_results_selector = ['#b_results > .b_ans::text']
+    no_results_selector = ["#b_results > .b_ans::text"]
 
-    num_results_search_selectors = ['.sb_count']
+    num_results_search_selectors = [".sb_count"]
 
-    effective_query_selector = ['#sp_requery a > strong', '#sp_requery + #sp_recourse a::attr(href)']
+    effective_query_selector = [
+        "#sp_requery a > strong",
+        "#sp_requery + #sp_recourse a::attr(href)",
+    ]
 
-    page_number_selectors = ['.sb_pagS::text']
+    page_number_selectors = [".sb_pagS::text"]
 
     normal_search_selectors = {
-        'results': {
-            'us_ip': {
-                'container': '#b_results',
-                'result_container': '.b_algo',
-                'link': 'h2 > a::attr(href)',
-                'snippet': '.b_caption > p::text',
-                'title': 'h2::text',
-                'visible_link': 'cite::text'
+        "results": {
+            "us_ip": {
+                "container": "#b_results",
+                "result_container": ".b_algo",
+                "link": "h2 > a::attr(href)",
+                "snippet": ".b_caption > p::text",
+                "title": "h2::text",
+                "visible_link": "cite::text",
             },
-            'de_ip': {
-                'container': '#b_results',
-                'result_container': '.b_algo',
-                'link': 'h2 > a::attr(href)',
-                'snippet': '.b_caption > p::text',
-                'title': 'h2::text',
-                'visible_link': 'cite::text'
+            "de_ip": {
+                "container": "#b_results",
+                "result_container": ".b_algo",
+                "link": "h2 > a::attr(href)",
+                "snippet": ".b_caption > p::text",
+                "title": "h2::text",
+                "visible_link": "cite::text",
             },
-            'de_ip_news_items': {
-                'container': 'ul.b_vList li',
-                'link': ' h5 a::attr(href)',
-                'snippet': 'p::text',
-                'title': ' h5 a::text',
-                'visible_link': 'cite::text'
+            "de_ip_news_items": {
+                "container": "ul.b_vList li",
+                "link": " h5 a::attr(href)",
+                "snippet": "p::text",
+                "title": " h5 a::text",
+                "visible_link": "cite::text",
             },
         },
-        'ads_main': {
-            'us_ip': {
-                'container': '#b_results .b_ad',
-                'result_container': '.sb_add',
-                'link': 'h2 > a::attr(href)',
-                'snippet': '.sb_addesc::text',
-                'title': 'h2 > a::text',
-                'visible_link': 'cite::text'
+        "ads_main": {
+            "us_ip": {
+                "container": "#b_results .b_ad",
+                "result_container": ".sb_add",
+                "link": "h2 > a::attr(href)",
+                "snippet": ".sb_addesc::text",
+                "title": "h2 > a::text",
+                "visible_link": "cite::text",
             },
-            'de_ip': {
-                'container': '#b_results .b_ad',
-                'result_container': '.sb_add',
-                'link': 'h2 > a::attr(href)',
-                'snippet': '.b_caption > p::text',
-                'title': 'h2 > a::text',
-                'visible_link': 'cite::text'
-            }
-        }
+            "de_ip": {
+                "container": "#b_results .b_ad",
+                "result_container": ".sb_add",
+                "link": "h2 > a::attr(href)",
+                "snippet": ".b_caption > p::text",
+                "title": "h2 > a::text",
+                "visible_link": "cite::text",
+            },
+        },
     }
 
     image_search_selectors = {
-        'results': {
-            'ch_ip': {
-                'container': '#dg_c .imgres',
-                'result_container': '.dg_u',
-                'link': 'a.dv_i::attr(m)'
+        "results": {
+            "ch_ip": {
+                "container": "#dg_c .imgres",
+                "result_container": ".dg_u",
+                "link": "a.dv_i::attr(m)",
             },
         }
     }
@@ -653,66 +687,69 @@ class BingParser(Parser):
         """
         super().after_parsing()
 
-        if self.searchtype == 'normal':
+        if self.searchtype == "normal":
 
             self.no_results = False
             if self.no_results_text:
-                self.no_results = self.query in self.no_results_text \
-                    or 'Do you want results only for' in self.no_results_text
+                self.no_results = (
+                    self.query in self.no_results_text
+                    or "Do you want results only for" in self.no_results_text
+                )
 
-        if self.searchtype == 'image':
+        if self.searchtype == "image":
             for key, i in self.iter_serp_items():
-                for regex in (
-                        r'imgurl:"(?P<url>.*?)"',
-                ):
-                    result = re.search(regex, self.search_results[key][i]['link'])
+                for regex in (r'imgurl:"(?P<url>.*?)"',):
+                    result = re.search(regex, self.search_results[key][i]["link"])
                     if result:
-                        self.search_results[key][i]['link'] = result.group('url')
+                        self.search_results[key][i]["link"] = result.group("url")
                         break
 
 
 class YahooParser(Parser):
     """Parses SERP pages of the Yahoo search engine."""
 
-    search_engine = 'yahoo'
+    search_engine = "yahoo"
 
-    search_types = ['normal', 'image']
+    search_types = ["normal", "image"]
 
     no_results_selector = []
 
-    effective_query_selector = ['.msg #cquery a::attr(href)']
+    effective_query_selector = [".msg #cquery a::attr(href)"]
 
-    num_results_search_selectors = ['#pg > span:last-child', '.compPagination span::text']
+    num_results_search_selectors = [
+        "#pg > span:last-child",
+        ".compPagination span::text",
+    ]
 
-    page_number_selectors = ['#pg > strong::text']
+    page_number_selectors = ["#pg > strong::text"]
 
     normal_search_selectors = {
-        'results': {
-            'de_ip': {
-                'container': '#main',
-                'result_container': '.res',
-                'link': 'div > h3 > a::attr(href)',
-                'snippet': 'div.abstr::text',
-                'title': 'div > h3 > a::text',
-                'visible_link': 'span.url::text'
+        "results": {
+            "de_ip": {
+                "container": "#main",
+                "result_container": ".res",
+                "link": "div > h3 > a::attr(href)",
+                "snippet": "div.abstr::text",
+                "title": "div > h3 > a::text",
+                "visible_link": "span.url::text",
             },
-            'de_ip_december_2015': {
-                'container': '#main',
-                'result_container': '.searchCenterMiddle li',
-                'link': 'h3.title a::attr(href)',
-                'snippet': '.compText p::text',
-                'title': 'h3.title a::text',
-                'visible_link': 'span::text'
+            "de_ip_december_2015": {
+                "container": "#main",
+                "result_container": ".searchCenterMiddle li",
+                "link": "h3.title a::attr(href)",
+                "snippet": ".compText p::text",
+                "title": "h3.title a::text",
+                "visible_link": "span::text",
             },
         },
     }
 
     image_search_selectors = {
-        'results': {
-            'ch_ip': {
-                'container': '#results',
-                'result_container': '#sres > li',
-                'link': 'a::attr(href)'
+        "results": {
+            "ch_ip": {
+                "container": "#results",
+                "result_container": "#sres > li",
+                "link": "a::attr(href)",
             },
         }
     }
@@ -739,74 +776,74 @@ class YahooParser(Parser):
         """
         super().after_parsing()
 
-        if self.searchtype == 'normal':
+        if self.searchtype == "normal":
 
             self.no_results = False
             if self.num_results == 0:
                 self.no_results = True
 
-            if len(self.dom.xpath(self.css_to_xpath('#cquery'))) >= 1:
+            if len(self.dom.xpath(self.css_to_xpath("#cquery"))) >= 1:
                 self.no_results = True
 
             for key, i in self.iter_serp_items():
-                if self.search_results[key][i]['visible_link'] is None:
+                if self.search_results[key][i]["visible_link"] is None:
                     del self.search_results[key][i]
 
-        if self.searchtype == 'image':
+        if self.searchtype == "image":
             for key, i in self.iter_serp_items():
-                for regex in (
-                        r'&imgurl=(?P<url>.*?)&',
-                ):
-                    result = re.search(regex, self.search_results[key][i]['link'])
+                for regex in (r"&imgurl=(?P<url>.*?)&",):
+                    result = re.search(regex, self.search_results[key][i]["link"])
                     if result:
                         # TODO: Fix this manual protocol adding by parsing "rurl"
-                        self.search_results[key][i]['link'] = 'http://' + unquote(result.group('url'))
+                        self.search_results[key][i]["link"] = "http://" + unquote(
+                            result.group("url")
+                        )
                         break
 
 
 class BaiduParser(Parser):
     """Parses SERP pages of the Baidu search engine."""
 
-    search_engine = 'baidu'
+    search_engine = "baidu"
 
-    search_types = ['normal', 'image']
+    search_types = ["normal", "image"]
 
-    num_results_search_selectors = ['#container .nums']
+    num_results_search_selectors = ["#container .nums"]
 
     no_results_selector = []
 
     # no such thing for baidu
-    effective_query_selector = ['']
+    effective_query_selector = [""]
 
-    page_number_selectors = ['.fk_cur + .pc::text']
+    page_number_selectors = [".fk_cur + .pc::text"]
 
     normal_search_selectors = {
-        'results': {
-            'de_ip': {
-                'container': '#content_left',
-                'result_container': '.result-op',
-                'link': 'h3 > a.t::attr(href)',
-                'snippet': '.c-abstract::text',
-                'title': 'h3 > a.t::text',
-                'visible_link': 'span.c-showurl::text'
+        "results": {
+            "de_ip": {
+                "container": "#content_left",
+                "result_container": ".result-op",
+                "link": "h3 > a.t::attr(href)",
+                "snippet": ".c-abstract::text",
+                "title": "h3 > a.t::text",
+                "visible_link": "span.c-showurl::text",
             },
-            'nojs': {
-                'container': '#content_left',
-                'result_container': '.result',
-                'link': 'h3 > a::attr(href)',
-                'snippet': '.c-abstract::text',
-                'title': 'h3 > a::text',
-                'visible_link': 'span.g::text'
-            }
+            "nojs": {
+                "container": "#content_left",
+                "result_container": ".result",
+                "link": "h3 > a::attr(href)",
+                "snippet": ".c-abstract::text",
+                "title": "h3 > a::text",
+                "visible_link": "span.g::text",
+            },
         },
     }
 
     image_search_selectors = {
-        'results': {
-            'ch_ip': {
-                'container': '#imgContainer',
-                'result_container': '.pageCon > li',
-                'link': '.imgShow a::attr(href)'
+        "results": {
+            "ch_ip": {
+                "container": "#imgContainer",
+                "result_container": ".pageCon > li",
+                "link": ".imgShow a::attr(href)",
             },
         }
     }
@@ -825,54 +862,54 @@ class BaiduParser(Parser):
         """
         super().after_parsing()
 
-        if self.search_engine == 'normal':
-            if len(self.dom.xpath(self.css_to_xpath('.hit_top_new'))) >= 1:
+        if self.search_engine == "normal":
+            if len(self.dom.xpath(self.css_to_xpath(".hit_top_new"))) >= 1:
                 self.no_results = True
 
-        if self.searchtype == 'image':
+        if self.searchtype == "image":
             for key, i in self.iter_serp_items():
-                for regex in (
-                        r'&objurl=(?P<url>.*?)&',
-                ):
-                    result = re.search(regex, self.search_results[key][i]['link'])
+                for regex in (r"&objurl=(?P<url>.*?)&",):
+                    result = re.search(regex, self.search_results[key][i]["link"])
                     if result:
-                        self.search_results[key][i]['link'] = unquote(result.group('url'))
+                        self.search_results[key][i]["link"] = unquote(
+                            result.group("url")
+                        )
                         break
 
 
 class DuckduckgoParser(Parser):
     """Parses SERP pages of the Duckduckgo search engine."""
 
-    search_engine = 'duckduckgo'
+    search_engine = "duckduckgo"
 
-    search_types = ['normal']
+    search_types = ["normal"]
 
     num_results_search_selectors = []
 
     no_results_selector = []
 
-    effective_query_selector = ['']
+    effective_query_selector = [""]
 
     # duckduckgo is loads next pages with ajax
-    page_number_selectors = ['']
+    page_number_selectors = [""]
 
     normal_search_selectors = {
-        'results': {
-            'de_ip': {
-                'container': '#links',
-                'result_container': '.result',
-                'link': '.result__title > a::attr(href)',
-                'snippet': 'result__snippet::text',
-                'title': '.result__title > a::text',
-                'visible_link': '.result__url__domain::text'
+        "results": {
+            "de_ip": {
+                "container": "#links",
+                "result_container": ".result",
+                "link": ".result__title > a::attr(href)",
+                "snippet": "result__snippet::text",
+                "title": ".result__title > a::text",
+                "visible_link": ".result__url__domain::text",
             },
-            'non_javascript_mode': {
-                'container': '#content',
-                'result_container': '.results_links',
-                'link': '.links_main > a::attr(href)',
-                'snippet': '.snippet::text',
-                'title': '.links_main > a::text',
-                'visible_link': '.url::text'
+            "non_javascript_mode": {
+                "container": "#content",
+                "result_container": ".results_links",
+                "link": ".links_main > a::attr(href)",
+                "snippet": ".snippet::text",
+                "title": ".links_main > a::text",
+                "visible_link": ".url::text",
             },
         },
     }
@@ -883,10 +920,15 @@ class DuckduckgoParser(Parser):
     def after_parsing(self):
         super().after_parsing()
 
-        if self.searchtype == 'normal':
+        if self.searchtype == "normal":
 
             try:
-                if 'No more results.' in self.dom.xpath(self.css_to_xpath('.no-results'))[0].text_content():
+                if (
+                    "No more results."
+                    in self.dom.xpath(self.css_to_xpath(".no-results"))[
+                        0
+                    ].text_content()
+                ):
                     self.no_results = True
             except:
                 pass
@@ -900,45 +942,45 @@ class DuckduckgoParser(Parser):
 class AskParser(Parser):
     """Parses SERP pages of the Ask search engine."""
 
-    search_engine = 'ask'
+    search_engine = "ask"
 
-    search_types = ['normal']
+    search_types = ["normal"]
 
     num_results_search_selectors = []
 
     no_results_selector = []
 
-    effective_query_selector = ['#spell-check-result > a']
+    effective_query_selector = ["#spell-check-result > a"]
 
-    page_number_selectors = ['.pgcsel .pg::text']
+    page_number_selectors = [".pgcsel .pg::text"]
 
     normal_search_selectors = {
-        'results': {
-            'de_ip': {
-                'container': '#midblock',
-                'result_container': '.ptbs.ur',
-                'link': '.abstract > a::attr(href)',
-                'snippet': '.abstract::text',
-                'title': '.txt_lg.b::text',
-                'visible_link': '.durl span::text'
+        "results": {
+            "de_ip": {
+                "container": "#midblock",
+                "result_container": ".ptbs.ur",
+                "link": ".abstract > a::attr(href)",
+                "snippet": ".abstract::text",
+                "title": ".txt_lg.b::text",
+                "visible_link": ".durl span::text",
             },
-            'de_ip_december_2015': {
-                'container': '.l-mid-content',
-                'result_container': '.web-result',
-                'link': '.web-result-title > a::attr(href)',
-                'snippet': '.web-result-description::text',
-                'title': '.web-result-title > a::text',
-                'visible_link': '.web-result-url::text'
+            "de_ip_december_2015": {
+                "container": ".l-mid-content",
+                "result_container": ".web-result",
+                "link": ".web-result-title > a::attr(href)",
+                "snippet": ".web-result-description::text",
+                "title": ".web-result-title > a::text",
+                "visible_link": ".web-result-url::text",
             },
             # as requested by httm mode
-            'de_ip_december_2015_raw_http': {
-                'container': '#midblock',
-                'result_container': '#teoma-results .wresult',
-                'link': 'a.title::attr(href)',
-                'snippet': '.abstract::text',
-                'title': 'a.title::text',
-                'visible_link': '.durl span::text'
-            }
+            "de_ip_december_2015_raw_http": {
+                "container": "#midblock",
+                "result_container": "#teoma-results .wresult",
+                "link": "a.title::attr(href)",
+                "snippet": ".abstract::text",
+                "title": "a.title::text",
+                "visible_link": ".durl span::text",
+            },
         },
     }
 
@@ -946,25 +988,25 @@ class AskParser(Parser):
 class BlekkoParser(Parser):
     """Parses SERP pages of the Blekko search engine."""
 
-    search_engine = 'blekko'
+    search_engine = "blekko"
 
-    search_types = ['normal']
+    search_types = ["normal"]
 
-    effective_query_selector = ['']
+    effective_query_selector = [""]
 
     no_results_selector = []
 
     num_results_search_selectors = []
 
     normal_search_selectors = {
-        'results': {
-            'de_ip': {
-                'container': '#links',
-                'result_container': '.result',
-                'link': '.result__title > a::attr(href)',
-                'snippet': 'result__snippet::text',
-                'title': '.result__title > a::text',
-                'visible_link': '.result__url__domain::text'
+        "results": {
+            "de_ip": {
+                "container": "#links",
+                "result_container": ".result",
+                "link": ".result__title > a::attr(href)",
+                "snippet": "result__snippet::text",
+                "title": ".result__title > a::text",
+                "visible_link": ".result__url__domain::text",
             }
         },
     }
@@ -984,24 +1026,24 @@ def get_parser_by_url(url):
     """
     parser = None
 
-    if re.search(r'^http[s]?://www\.google', url):
+    if re.search(r"^http[s]?://www\.google", url):
         parser = GoogleParser
-    elif re.search(r'^http://yandex\.ru', url):
+    elif re.search(r"^http://yandex\.ru", url):
         parser = YandexParser
-    elif re.search(r'^http://www\.bing\.', url):
+    elif re.search(r"^http://www\.bing\.", url):
         parser = BingParser
-    elif re.search(r'^http[s]?://search\.yahoo.', url):
+    elif re.search(r"^http[s]?://search\.yahoo.", url):
         parser = YahooParser
-    elif re.search(r'^http://www\.baidu\.com', url):
+    elif re.search(r"^http://www\.baidu\.com", url):
         parser = BaiduParser
-    elif re.search(r'^https://duckduckgo\.com', url):
+    elif re.search(r"^https://duckduckgo\.com", url):
         parser = DuckduckgoParser
-    if re.search(r'^http[s]?://[a-z]{2}?\.ask', url):
+    if re.search(r"^http[s]?://[a-z]{2}?\.ask", url):
         parser = AskParser
-    if re.search(r'^http[s]?://blekko', url):
+    if re.search(r"^http[s]?://blekko", url):
         parser = BlekkoParser
     if not parser:
-        raise UnknowUrlException('No parser for {}.'.format(url))
+        raise UnknowUrlException("No parser for {}.".format(url))
 
     return parser
 
@@ -1018,27 +1060,29 @@ def get_parser_by_search_engine(search_engine):
     Raises:
         NoParserForSearchEngineException if no parser could be found for the name.
     """
-    if search_engine == 'google' or search_engine == 'googleimg':
+    if search_engine == "google" or search_engine == "googleimg":
         return GoogleParser
-    elif search_engine == 'yandex':
+    elif search_engine == "yandex":
         return YandexParser
-    elif search_engine == 'bing':
+    elif search_engine == "bing":
         return BingParser
-    elif search_engine == 'yahoo':
+    elif search_engine == "yahoo":
         return YahooParser
-    elif search_engine == 'baidu' or search_engine == 'baiduimg':
+    elif search_engine == "baidu" or search_engine == "baiduimg":
         return BaiduParser
-    elif search_engine == 'duckduckgo':
+    elif search_engine == "duckduckgo":
         return DuckduckgoParser
-    elif search_engine == 'ask':
+    elif search_engine == "ask":
         return AskParser
-    elif search_engine == 'blekko':
+    elif search_engine == "blekko":
         return BlekkoParser
     else:
-        raise NoParserForSearchEngineException('No such parser for "{}"'.format(search_engine))
+        raise NoParserForSearchEngineException(
+            'No such parser for "{}"'.format(search_engine)
+        )
 
 
-def parse_serp(html='', query='', search_engine='google'):
+def parse_serp(html="", query="", search_engine="google"):
     """Store the parsed data in the sqlalchemy session.
 
     If no parser is supplied then we are expected to parse again with
@@ -1061,14 +1105,14 @@ def parse_serp(html='', query='', search_engine='google'):
     return parser.search_results
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     """Originally part of https://github.com/NikolaiT/GoogleScraper.
-    
-    Only for testing purposes: May be called directly with an search engine 
+
+    Only for testing purposes: May be called directly with an search engine
     search url. For example:
-    
+
     python3 parsing.py 'http://yandex.ru/yandsearch?text=GoogleScraper&lr=178&csg=82%2C4317%2C20%2C20%2C0%2C0%2C0'
-    
+
     Please note: Using this module directly makes little sense, because requesting such urls
     directly without imitating a real browser (which is done in my GoogleScraper module) makes
     the search engines return crippled html, which makes it impossible to parse.
@@ -1076,10 +1120,10 @@ if __name__ == '__main__':
     """
     import requests
 
-    assert len(sys.argv) >= 2, 'Usage: {} url/file'.format(sys.argv[0])
+    assert len(sys.argv) >= 2, "Usage: {} url/file".format(sys.argv[0])
     url = sys.argv[1]
     if os.path.exists(url):
-        raw_html = open(url, 'r').read()
+        raw_html = open(url, "r").read()
         parser = get_parser_by_search_engine(sys.argv[2])
     else:
         raw_html = requests.get(url).text
@@ -1089,5 +1133,5 @@ if __name__ == '__main__':
     parser.parse()
     print(parser)
 
-    with open('/tmp/testhtml.html', 'w') as of:
+    with open("/tmp/testhtml.html", "w") as of:
         of.write(raw_html)
