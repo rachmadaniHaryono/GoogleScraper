@@ -26,5 +26,13 @@ setup(
     entry_points={"console_scripts": ["GoogleScraper = GoogleScraper.core:main"]},
     package_dir={"examples": "examples"},
     install_requires=requirements,
-    extras_require={"dev": ["pytest", "pytest-pylint", "pytest-black", "pytest-mypy"]},
+    extras_require={
+        "dev": [
+            "pytest",
+            "pytest-pylint",
+            "pytest-black",
+            "pytest-mypy",
+            "sphinx-autobuild",
+        ]
+    },
 )
