@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+import typing
+
+import warnings
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.firefox import GeckoDriverManager
 
@@ -18,11 +21,11 @@ and handles output.
 # if set to 'all', then all data from results are outputted
 # if set to 'summarize', then only a summary of results is given.
 # if set to anything else, no output will be given at all.
-print_results = 'all'
+print_results = "all"
 
 # The name of the database that is written to the same
 # directory where GoogleScraper will be called.
-database_name = 'google_scraper'
+database_name = "google_scraper"
 
 # The file name of the output
 # The file name also determine the format of how
@@ -30,7 +33,7 @@ database_name = 'google_scraper'
 # filename.json => save results as json
 # filename.csv => save a csv file
 # If set to None, don't write any file.
-output_filename = ''
+output_filename = ""
 
 # Whether sqlalchemy should log all stuff to stdout
 # useful for devs. Don't set this to True if you don't know
@@ -47,13 +50,13 @@ log_sqlalchemy = False
 # INFO = 20
 # DEBUG = 10
 # NOTSET = 0
-log_level = 'INFO'
+log_level = "INFO"
 
 # Log format string
-log_format = '[%(threadName)s] - %(asctime)s - %(name)s - %(levelname)s - %(message)s'
+log_format = "[%(threadName)s] - %(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
 # Logfile
-log_file = 'googlescraper.log'
+log_file = "googlescraper.log"
 
 """
 [SCRAPING]
@@ -67,7 +70,7 @@ keywords = []
 
 # The keyword file. If this is a valid file path, the keywords params will be ignored and
 # the ones from the file will be taken. Each keyword must be on a separate line.
-keyword_file = ''
+keyword_file = ""
 
 # How many results per SERP page
 num_results_per_page = 10
@@ -91,21 +94,31 @@ search_offset = 1
 # have different ip on which they are reachable. If you set a file with urls for the search engine,
 # then GoogleScraper will pick a random url for any scraper instance.
 # One url per line. It needs to be a valid url, not just an ip address!
-google_ip_file = ''
+google_ip_file = ""
 
 # List of supported search engines
 # If you add support for another search engine (of course implement it in the
 # appropriate places) add it in this list.
-supported_search_engines = ['google', 'yandex', 'bing', 'yahoo', 'baidu', 'duckduckgo', 'ask']
+supported_search_engines = [
+    "google",
+    "yandex",
+    "bing",
+    "yahoo",
+    "baidu",
+    "duckduckgo",
+    "ask",
+]
 
 # The search engine(s) to use. For the supported search engines, see above "supported_search_engines"
-search_engines = ['google', ]
+search_engines = [
+    "google",
+]
 
 # The base search urls
 # Ready to append the parameters at the end to fine tune the search.
 
 # The google base search url
-google_search_url = 'https://www.google.com/search?'
+google_search_url = "https://www.google.com/search?"
 
 # whether to change the search settings prior to scraping
 # when this is set to False google will search with
@@ -126,42 +139,42 @@ google_selenium_num_results = 100
 # Private results help find more relevant content for you, including content and connections that only you can see.
 google_selenium_personalization = False
 # use a country code such as US, DE, GB, CH, ...
-google_selenium_region = 'DE'
+google_selenium_region = "DE"
 google_selenium_safe_search = False
 # the language for google search results
-google_selenium_language = 'English'
+google_selenium_language = "English"
 
 
 # The yandex base search url
-yandex_search_url = 'http://yandex.ru/yandsearch?'
+yandex_search_url = "http://yandex.ru/yandsearch?"
 
 # The bing base search url
-bing_search_url = 'http://www.bing.com/search?'
+bing_search_url = "http://www.bing.com/search?"
 
 # The yahoo base search url
-yahoo_search_url = 'https://de.search.yahoo.com/search?'
+yahoo_search_url = "https://de.search.yahoo.com/search?"
 
 # The baidu base search url
-baidu_search_url = 'http://www.baidu.com/s?'
+baidu_search_url = "http://www.baidu.com/s?"
 
 # The duckduckgo base search url
-duckduckgo_search_url = 'https://duckduckgo.com/'
+duckduckgo_search_url = "https://duckduckgo.com/"
 
 # duckduckgo url for http mode
-http_duckduckgo_search_url = 'https://duckduckgo.com/html/?'
+http_duckduckgo_search_url = "https://duckduckgo.com/html/?"
 
 # The ask base search url
-ask_search_url = 'http://de.ask.com/web?'
+ask_search_url = "http://de.ask.com/web?"
 
 # The search type. Currently, the following search modes are
 # supported for some search engine=  normal, video, news and image search.
 # "normal" search type is supported in all search engines.
-search_type = 'normal'
+search_type = "normal"
 
 # The scrape method. Can be 'http' or 'selenium' or 'http-async'
 # http mode uses http packets directly, whereas selenium mode uses a real browser.
 # http_async uses asyncio.
-scrape_method = 'selenium'
+scrape_method = "selenium"
 
 # If scraping with the own IP address should be allowed.
 # If this is set to False and you don't specify any proxies,
@@ -191,7 +204,7 @@ Global configuration parameters that apply on all modes.
 #        socks5 23.212.45.13= 1080 username= password
 #        socks4 23.212.45.13= 80 username= password
 #        http 23.212.45.13= 80
-proxy_file = ''
+proxy_file = ""
 
 
 # Whether to continue the last scrape when ended early.
@@ -210,20 +223,20 @@ continue_last_scrape = True
 
 # Specify the connection details in the following format=  mysql= //<username>= <password>@<host>/<dbname>
 # Example=  mysql= //root= soemshittypass@localhost/supercoolproxies
-mysql_proxy_db = ''
+mysql_proxy_db = ""
 
 # Whether to manually clean cache files. For development purposes
 clean_cache_files = False
 
 # Proxy checker url
-proxy_check_url = 'http://canihazip.com/s'
+proxy_check_url = "http://canihazip.com/s"
 
 # Proxy info url
-proxy_info_url = 'http://ipinfo.io/json'
+proxy_info_url = "http://ipinfo.io/json"
 
 # The basic search url
 # Default is google
-base_search_url = 'http://www.google.com/search'
+base_search_url = "http://www.google.com/search"
 
 # Whether caching shall be enabled
 do_caching = True
@@ -236,10 +249,10 @@ minimize_caching_files = True
 compress_cached_files = True
 
 # Use either bz2 or gz to compress cached files
-compressing_algorithm = 'gz'
+compressing_algorithm = "gz"
 
 # The relative path to the cache directory
-cachedir = '.scrapecache/'
+cachedir = ".scrapecache/"
 
 # After how many hours should the cache be cleaned
 clean_cache_after = 48
@@ -263,8 +276,8 @@ do_sleep = True
 #     2: (20, 40),
 # }
 sleeping_ranges = {
-    70:  (1, 3),
-    20:  (3, 6),
+    70: (1, 3),
+    20: (3, 6),
     5: (10, 20),
     3: (20, 25),
     2: (25, 30),
@@ -275,8 +288,8 @@ sleeping_ranges = {
 # option {search_engine_name}_sleeping_ranges, then
 # only this search engine will sleep the given ranges.
 google_sleeping_ranges = {
-    70:  (1, 3),
-    20:  (3, 6),
+    70: (1, 3),
+    20: (3, 6),
     5: (10, 20),
     3: (20, 25),
     2: (25, 30),
@@ -284,16 +297,16 @@ google_sleeping_ranges = {
 
 # sleep a certain time after the Nth page has been scraped
 fixed_sleeping_ranges = {
-    1000:  (180, 420),
-    2000:  (180, 420),
-    3000:  (180, 420),
-    4000:  (180, 420),
-    5000:  (180, 420),
-    6000:  (180, 420),
-    7000:  (180, 420),
-    8000:  (180, 420),
-    9000:  (180, 420),
-    10000:  (180, 420),
+    1000: (180, 420),
+    2000: (180, 420),
+    3000: (180, 420),
+    4000: (180, 420),
+    5000: (180, 420),
+    6000: (180, 420),
+    7000: (180, 420),
+    8000: (180, 420),
+    9000: (180, 420),
+    10000: (180, 420),
 }
 
 # If the search should be simulated instead of being done.
@@ -309,24 +322,29 @@ fix_cache_names = False
 All settings that only apply for requesting with real browsers.
 """
 # which browser to use in selenium mode. Valid values = ('chrome', 'firefox')
-sel_browser = 'chrome'
+sel_browser = "chrome"
 
 # in which mode the browser is started. Valid values = ('normal', 'headless')
-browser_mode = 'headless'
+browser_mode = "headless"
 
 # chrome driver executable path
 # get chrome drivers here: https://chromedriver.storage.googleapis.com/index.html?path=2.41/
-chromedriver_path = ChromeDriverManager().install()
+chromedriver_path: typing.Optional[typing.Any]
+try:
+    chromedriver_path = ChromeDriverManager().install()
+except ValueError as err:
+    warnings.warn("{}: {}".format(type(err).__name__, err))
+    chromedriver_path = None
 
 # geckodriver executable path
 # get gecko drivers here: https://github.com/mozilla/geckodriver/releases
 geckodriver_path = GeckoDriverManager().install()
 
 # path to firefox binary
-firefox_binary_path = '/usr/bin/firefox'
+firefox_binary_path = "/usr/bin/firefox"
 
 # path to chromium browser binary
-chrome_binary_path = '/usr/bin/chromium-browser'
+chrome_binary_path = "/usr/bin/chromium-browser"
 
 # Manual captcha solving
 # If this parameter is set to a Integer, the browser waits for the user
@@ -364,7 +382,7 @@ All settings that target the raw http packet scraping mode.
 # for each mode
 # search engine urls for the specific engines
 # The google search url specifiably for http mode
-google_search_url = 'https://www.google.com/search?'
+google_search_url = "https://www.google.com/search?"
 
 """
 [HTTP_ASYNC]
