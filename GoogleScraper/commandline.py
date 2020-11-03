@@ -244,7 +244,6 @@ NOTSET = 0
 
     if only_print_help:
         parser.print_help()
-    else:
-        args = parser.parse_args()
-
-        return vars(args)
+        return {}
+    args = parser.parse_args()
+    return vars(args)

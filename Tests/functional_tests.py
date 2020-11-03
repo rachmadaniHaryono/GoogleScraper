@@ -502,7 +502,7 @@ class GoogleScraperFunctionalTestCase(unittest.TestCase):
                     self.assertTrue(is_string_and_longer_than(result["link"], 10))
                     self.assertTrue(isinstance(int(result["rank"]), int))
 
-    def test_http_mode_google_csv_output(self):
+    def test_http_mode_google_csv_output(self):  # pylint: disable=too-many-statements
 
         results_file = os.path.join(tempfile.gettempdir(), "results.csv")
         if os.path.exists(results_file):
@@ -560,7 +560,7 @@ class GoogleScraperFunctionalTestCase(unittest.TestCase):
         with open(results_file, "rt") as file:
             reader = csv.DictReader(file, delimiter=",")
 
-            rows = [row for row in reader]
+            rows = list(reader)
 
             self.assertAlmostEqual(20, len(rows), delta=3)
 
@@ -627,7 +627,7 @@ class GoogleScraperFunctionalTestCase(unittest.TestCase):
         self.assertEqual(len(search.serps), 6)
 
         # test that we have twice [1,2,3] as page numbers
-        self.assertSetEqual(set([serp.page_number for serp in search.serps]), {1, 2, 3})
+        self.assertSetEqual(set(serp.page_number for serp in search.serps), {1, 2, 3})
 
         self.assertAlmostEqual(
             sum([len(serp.links) for serp in search.serps]), 60, delta=10

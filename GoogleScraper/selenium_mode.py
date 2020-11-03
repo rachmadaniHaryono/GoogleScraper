@@ -1,43 +1,45 @@
 # -*- coding: utf-8 -*-
 
-import tempfile
-import threading
-from urllib.parse import quote
-import json
 import datetime
-import time
+import json
 import math
+import os
 import random
 import re
 import sys
-import os
+import tempfile
+import threading
+import time
+from urllib.parse import quote
 
 try:
     from selenium import webdriver
-    from selenium.common.exceptions import TimeoutException, WebDriverException
-    from selenium.common.exceptions import ElementNotVisibleException
-    from selenium.webdriver.common.keys import Keys
+    from selenium.common.exceptions import (
+        ElementNotVisibleException,
+        TimeoutException,
+        WebDriverException,
+    )
     from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait  # available since 2.4.0
+    from selenium.webdriver.common.keys import Keys
+    from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
+    from selenium.webdriver.firefox.options import Options as FirefoxOptions
     from selenium.webdriver.support import (
         expected_conditions as EC,
     )  # available since 2.26.0
-    from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-    from selenium.webdriver.firefox.options import Options as FirefoxOptions
-    from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
+    from selenium.webdriver.support.ui import WebDriverWait  # available since 2.4.0
 except ImportError as ie:
     print(ie)
     sys.exit("You can install missing modules with `pip3 install [modulename]`")
 
+import logging
+
 from GoogleScraper.scraping import (
+    MaliciousRequestDetected,
     SearchEngineScrape,
     SeleniumSearchError,
     get_base_search_url_by_search_engine,
-    MaliciousRequestDetected,
 )
 from GoogleScraper.user_agents import random_user_agent
-import logging
-
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +62,7 @@ def check_detection(config, search_engine_name):
 
     browser = webdriver.Chrome(chrome_options=options, executable_path=chromedriver)
 
-    if search_engine_name == "google":
+    if search_engine_name == "google":  # pylint: disable=no-else-return
         url = get_base_search_url_by_search_engine(config, "google", "selenium")
         browser.get(url)
 
@@ -131,7 +133,9 @@ def get_selenium_scraper_by_search_engine_name(
     return SelScrape(config, *args, **kwargs)
 
 
-class SelScrape(SearchEngineScrape, threading.Thread):
+class SelScrape(
+    SearchEngineScrape, threading.Thread
+):  # pylint: disable=too-many-instance-attributes
     """Instances of this class make use of selenium browser
     objects to query the search engines on a high level.
     """
@@ -158,7 +162,6 @@ class SelScrape(SearchEngineScrape, threading.Thread):
         "duckduckgo": (By.NAME, "q"),
         "ask": (By.NAME, "q"),
         "blekko": (By.NAME, "q"),
-        "google": (By.NAME, "q"),
         "googleimg": (By.NAME, "as_q"),
         "baiduimg": (By.NAME, "word"),
     }
@@ -243,6 +246,8 @@ class SelScrape(SearchEngineScrape, threading.Thread):
         """
         assert tab_number < self.number_of_tabs
 
+        browser, first_result = None, None
+        # @todo: find browser and first_result var
         first_link = first_result.find_element_by_tag_name("a")
 
         # Save the window opener (current window, do not mistaken with tab... not the same)
@@ -259,7 +264,7 @@ class SelScrape(SearchEngineScrape, threading.Thread):
         browser.switch_to_window(main_window)
 
         # do whatever you have to do on this page, we will just got to sleep for now
-        sleep(2)
+        time.sleep(2)
 
         # Close current tab
         browser.find_element_by_tag_name("body").send_keys(Keys.CONTROL + "w")
@@ -340,7 +345,7 @@ class SelScrape(SearchEngineScrape, threading.Thread):
         """
         if self.browser_type == "chrome":
             return self._get_Chrome()
-        elif self.browser_type == "firefox":
+        if self.browser_type == "firefox":
             return self._get_Firefox()
 
         return False
@@ -380,14 +385,18 @@ class SelScrape(SearchEngineScrape, threading.Thread):
                 )
 
             chromedriver_path = self.config.get("chromedriver_path")
-            self.webdriver = webdriver.Chrome(
-                executable_path=chromedriver_path, chrome_options=chrome_options
+            # fmt: off
+            self.webdriver = ( # pylint: disable=attribute-defined-outside-init
+                webdriver.Chrome(
+                    executable_path=chromedriver_path, chrome_options=chrome_options
+                )
             )
+            # fmt: on
             return True
 
         except WebDriverException as e:
             # we don't have a chrome executable or a chrome webdriver installed
-            raise
+            raise e
         return False
 
     def _get_Firefox(self):
@@ -424,12 +433,16 @@ class SelScrape(SearchEngineScrape, threading.Thread):
 
                 profile.update_preferences()
 
-            self.webdriver = webdriver.Firefox(
-                firefox_binary=binary,
-                firefox_options=options,
-                executable_path=geckodriver_path,
-                firefox_profile=profile,
+            # fmt: off
+            self.webdriver = (  # pylint: disable=attribute-defined-outside-init
+                webdriver.Firefox(
+                    firefox_binary=binary,
+                    firefox_options=options,
+                    executable_path=geckodriver_path,
+                    firefox_profile=profile,
+                )
             )
+            # fmt: on
             return True
 
         except WebDriverException as e:
@@ -448,7 +461,9 @@ class SelScrape(SearchEngineScrape, threading.Thread):
             and needles["inhtml"] in self.webdriver.page_source
         )
 
-    def handle_request_denied(self):
+    def handle_request_denied(  # pylint: disable=arguments-differ,inconsistent-return-statements
+        self,
+    ):
         """Checks whether Google detected a potentially harmful request.
 
         Whenever such potential abuse is detected, Google shows an captcha.
@@ -483,10 +498,10 @@ class SelScrape(SearchEngineScrape, threading.Thread):
                                 self._get_search_input_field()
                             )
                         )
-                    except TimeoutException:
+                    except TimeoutException as err:
                         raise MaliciousRequestDetected(
                             "Requesting with this IP address or cookies is not possible at the moment."
-                        )
+                        ) from err
 
             elif self.config.get("captcha_solving_service", False):
                 # implement request to manual captcha solving service such
@@ -518,8 +533,7 @@ class SelScrape(SearchEngineScrape, threading.Thread):
     def _get_search_param_fields(self):
         if self.search_engine_name in self.param_field_selectors:
             return self.param_field_selectors[self.search_engine_name]
-        else:
-            return {}
+        return {}
 
     def _wait_until_search_input_field_appears(self, max_wait=5):
         """Waits until the search input field can be located for the current search engine
@@ -617,10 +631,9 @@ class SelScrape(SearchEngineScrape, threading.Thread):
         # wait until the next page was loaded
         if not next_url:
             return False
-        else:
-            return next_url
+        return next_url
 
-    def _find_next_page_element(self):
+    def _find_next_page_element(self):  # pylint: disable=inconsistent-return-statements
         """Finds the element that locates the next page for any search engine.
 
         Returns:
@@ -646,7 +659,7 @@ class SelScrape(SearchEngineScrape, threading.Thread):
 
             return self.webdriver.find_element_by_css_selector(selector)
 
-        elif self.search_type == "image":
+        if self.search_type == "image":
             self.page_down()
             return True
 
@@ -746,7 +759,7 @@ class SelScrape(SearchEngineScrape, threading.Thread):
 
         self.webdriver.get(starting_url)
 
-    def search(self):
+    def search(self):  # pylint: disable=arguments-differ
         """Search with webdriver.
 
         Fills out the search form of the search engine for each keyword.
@@ -767,7 +780,11 @@ class SelScrape(SearchEngineScrape, threading.Thread):
                 self.search_input.clear()
                 time.sleep(0.25)
 
-                self.search_param_fields = self._get_search_param_fields()
+                # fmt: off
+                self.search_param_fields = ( # pylint: disable=attribute-defined-outside-init
+                    self._get_search_param_fields()
+                )
+                # fmt: on
 
                 if self.search_param_fields:
                     wait_res = self._wait_until_search_param_fields_appears()
@@ -907,7 +924,7 @@ class GoogleSelScrape(SelScrape):
         SelScrape.__init__(self, *args, **kwargs)
         self.largest_id = 0
 
-    def build_search(self):
+    def build_search(self):  # pylint: disable=inconsistent-return-statements
         """
         Specify google page settings according to config.
 
@@ -1008,7 +1025,12 @@ class GoogleSelScrape(SelScrape):
                 wait = input("waiting...")
                 raise e
 
-            driver.set_window_size(oldsize["width"], oldsize["height"])
+            # fmt: off
+            driver.set_window_size( # pylint: disable=undefined-variable
+                oldsize["width"], oldsize["height"]
+            )
+            # fmt: on
+            # @todo: driver=self.webdriver
 
 
 class DuckduckgoSelScrape(SelScrape):

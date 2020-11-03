@@ -136,7 +136,7 @@ class SearchEngineResultsPage(Base):
                     parsed = urlparse(link["link"])
 
                     # fill with nones to prevent key errors
-                    [
+                    list(
                         link.update({key: None})
                         for key in (
                             "snippet",
@@ -146,7 +146,7 @@ class SearchEngineResultsPage(Base):
                             "num_reviews",
                         )
                         if key not in link
-                    ]
+                    )
 
                     Link(
                         link=link["link"],
@@ -306,8 +306,7 @@ def get_session(config, scoped=False, engine=None, path=None):
     if scoped:
         ScopedSession = scoped_session(session_factory)
         return ScopedSession
-    else:
-        return session_factory
+    return session_factory
 
 
 def fixtures(config, session):

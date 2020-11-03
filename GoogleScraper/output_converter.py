@@ -17,7 +17,9 @@ impossible to launch lang scrape jobs with millions of keywords.
 output_format = "stdout"
 outfile = sys.stdout
 csv_fieldnames = sorted(
-    set(Link.__table__.columns._data.keys() + SERP.__table__.columns._data.keys())
+    set(
+        Link.__table__.columns._data.keys() + SERP.__table__.columns._data.keys()
+    )  # pylint: disable=protected-access, no-member
     - {"id", "serp_id"}
 )
 
@@ -64,7 +66,7 @@ class CsvStreamWriter:
             d = row2dict(serp)
             d.update(row)
             d = {
-                k: v if type(v) is str else v
+                k: v if isinstance(v, str) else v
                 for k, v in d.items()
                 if k in csv_fieldnames
             }
@@ -75,7 +77,7 @@ class CsvStreamWriter:
 
 
 def init_outfile(config, force_reload=False):
-    global outfile, output_format
+    global outfile, output_format  #  pylint: disable=global-statement
 
     if not outfile or force_reload:
 
@@ -113,7 +115,7 @@ def store_serp_result(serp, config):
     Args:
         serp: A serp object
     """
-    global outfile, output_format
+    global outfile, output_format  #  pylint: disable=global-statement
 
     if outfile:
         data = row2dict(serp)
@@ -146,6 +148,6 @@ def close_outfile():
     """
     Closes the outfile.
     """
-    global outfile
+    global outfile  #  pylint: disable=global-statement
     if output_format in ("json", "csv"):
         outfile.end()

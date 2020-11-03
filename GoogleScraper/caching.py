@@ -49,10 +49,8 @@ class InvalidConfigurationFileException(Exception):
     configuration file
     """
 
-    pass
 
-
-class CompressedFile(object):
+class CompressedFile:
     """Read and write the data of a compressed file.
     Used to cache files for GoogleScraper.s
 
@@ -157,7 +155,8 @@ class CacheManager:
                     else:
                         os.remove(os.path.join(cachedir, fname))
 
-    def cached_file_name(self, keyword, search_engine, scrape_mode, page_number):
+    @classmethod
+    def cached_file_name(cls, keyword, search_engine, scrape_mode, page_number):
         """Make a unique file name from the search engine search request.
 
         Important! The order of the sequence is darn important! If search queries have the same
@@ -228,8 +227,8 @@ class CacheManager:
 
                 path = os.path.join(cdir, fname)
                 return self.read_cached_file(path)
-            else:
-                return False
+            return False
+        return False
 
     def read_cached_file(self, path):
         """Read a compressed or uncompressed file.
@@ -280,6 +279,7 @@ class CacheManager:
                 raise InvalidConfigurationFileException(
                     '"{}" is a invalid configuration file.'.format(path)
                 )
+        return None
 
     def cache_results(
         self, parser, query, search_engine, scrape_mode, page_number, db_lock=None
@@ -379,9 +379,8 @@ class CacheManager:
         if duplicates:
             logger.info("Not one-to-one. {}".format(duplicates))
             return False
-        else:
-            logger.info("one-to-one")
-            return True
+        logger.info("one-to-one")
+        return True
 
     def parse_all_cached_files(self, scrape_jobs, session, scraper_search):
         """Walk recursively through the cachedir (as given by the Config) and parse all cached files.
@@ -459,7 +458,9 @@ class CacheManager:
 
         return scrape_jobs
 
-    def parse_again(self, fname, search_engine, scrape_method, query):
+    def parse_again(
+        self, fname, search_engine, scrape_method, query
+    ):  # pylint: disable=unused-argument
         """
         @todo: `scrape_method` is not used here -> check if scrape_method is passed to this function and remove it
         """
@@ -469,8 +470,9 @@ class CacheManager:
             self.config, html=html, search_engine=search_engine, query=query
         )
 
+    @classmethod
     def get_serp_from_database(
-        self, session, query, search_engine, scrape_method, page_number
+        cls, session, query, search_engine, scrape_method, page_number
     ):
         try:
             serp = (
@@ -496,7 +498,12 @@ class CacheManager:
             "Do you really want to strip all cache files from bloating tags such as <script> and <style>? "
         ).startswith("y"):
             import lxml.html
-            from lxml.html.clean import Cleaner
+            from lxml.html.clean import Cleaner  # pylint: disable=no-name-in-module
+
+            """ @note: pylint will raise error no-name-in-module for lxml.html.clean.Clenaer
+            but it actually exist
+            https://lxml.de/api/lxml.html.clean.Cleaner-class.html
+            """
 
             cleaner = Cleaner()
             cleaner.style = True
@@ -515,7 +522,9 @@ class CacheManager:
                     )
                 )
 
-    def fix_broken_cache_names(self, url, search_engine, scrapemode, page_number):
+    def fix_broken_cache_names(
+        self, url, search_engine, scrapemode, page_number
+    ):  # pylint: disable=unused-argument
         """Fix broken cache names.
 
         Args:
@@ -553,7 +562,7 @@ class CacheManager:
 
         logger.debug("Renamed {} files.".format(i))
 
-    def cached(self, f, attr_to_cache=None):
+    def cached(self, f, attr_to_cache=None):  # pylint: disable=unused-argument
         """Decorator that makes return value of functions cachable.
 
         Any function that returns a value and that is decorated with
@@ -570,14 +579,19 @@ class CacheManager:
         @todo: `attr_to_cache` is not used here -> check if scrape_method is passed to this function and remove it
         """
 
+        # @note: unexpected-keyword-arg error temporarily disable to pass the test
         def wraps(*args, **kwargs):
-            cached_value = self.get_cached(*args, params=kwargs)
+            cached_value = self.get_cached(  # pylint: disable=unexpected-keyword-arg
+                *args, params=kwargs
+            )
             if cached_value:
                 f(*args, attr_to_cache=cached_value, **kwargs)
             else:
                 # Nothing was cached for this attribute
                 value = f(*args, attr_to_cache=None, **kwargs)
-                self.cache_results(value, *args, params=kwargs)
+                self.cache_results(  # pylint: disable=unexpected-keyword-arg
+                    value, *args, params=kwargs
+                )
 
         return wraps
 

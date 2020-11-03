@@ -12,7 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class AsyncHttpScrape(object):
+class AsyncHttpScrape:
     """Scrape asynchronously using asyncio.
 
     https://aiohttp.readthedocs.io/en/v3.0.1/client.html
@@ -82,10 +82,8 @@ class AsyncHttpScrape(object):
 
             return None
 
-        return request
 
-
-class AsyncScrapeScheduler(object):
+class AsyncScrapeScheduler:
     """
     Processes the single requests in an asynchronous way.
     """
@@ -180,9 +178,9 @@ if __name__ == "__main__":
     some_words = get_some_words(n=1)
 
     cfg = get_config()
-    scrape_jobs = list(
+    scrape_jobs_ = list(
         default_scrape_jobs_for_keywords(some_words, ["bing"], "http-async", 1)
     )
 
-    manager = AsyncScrapeScheduler(cfg, scrape_jobs)
+    manager = AsyncScrapeScheduler(cfg, scrape_jobs_)
     manager.run()

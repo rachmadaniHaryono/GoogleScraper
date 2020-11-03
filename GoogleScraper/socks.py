@@ -86,7 +86,7 @@ class ProxyError(IOError):
     socket_err contains original socket.error exception.
     """
 
-    def __init__(self, msg, socket_err=None):
+    def __init__(self, msg, socket_err=None):  # pylint: disable=super-init-not-called
         self.msg = msg
         self.socket_err = socket_err
 
@@ -230,19 +230,25 @@ class _BaseSocket(socket.socket):
 
 
 def _makemethod(name):
-    return lambda self, *pos, **kw: self._savedmethods[name](*pos, **kw)
+    # fmt: off
+    return lambda self, *pos, **kw: self._savedmethods[ # pylint: disable=protected-access
+        name
+    ](
+        *pos, **kw
+    )
+    # fmt: on
 
 
-for name in ("sendto", "send", "recvfrom", "recv"):
-    method = getattr(_BaseSocket, name, None)
+for name_ in ("sendto", "send", "recvfrom", "recv"):
+    method = getattr(_BaseSocket, name_, None)
 
     # Determine if the method is not defined the usual way
     # as a function in the class.
     # Python 2 uses __slots__, so there are descriptors for each method,
     # but they are not functions.
     if not isinstance(method, Callable):
-        _BaseSocket._savenames.append(name)
-        setattr(_BaseSocket, name, _makemethod(name))
+        _BaseSocket._savenames.append(name_)  # pylint: disable=protected-access
+        setattr(_BaseSocket, name_, _makemethod(name_))
 
 
 class socksocket(_BaseSocket):
@@ -257,7 +263,11 @@ class socksocket(_BaseSocket):
     default_proxy = None
 
     def __init__(
-        self, family=socket.AF_INET, type=socket.SOCK_STREAM, proto=0, _sock=None
+        self,
+        family=socket.AF_INET,
+        type=socket.SOCK_STREAM,  # pylint: disable=redefined-builtin
+        proto=0,
+        _sock=None,
     ):
         if type not in {socket.SOCK_STREAM, socket.SOCK_DGRAM}:
             msg = "Socket type must be stream or datagram, not {!r}"
@@ -273,7 +283,8 @@ class socksocket(_BaseSocket):
         self.proxy_sockname = None
         self.proxy_peername = None
 
-    def _readall(self, file, count):
+    @classmethod
+    def _readall(cls, file, count):
         """
         Receive EXACTLY the number of bytes requested from the file object.
         Blocks until the required number of bytes have been received.
@@ -323,7 +334,7 @@ class socksocket(_BaseSocket):
 
     setproxy = set_proxy
 
-    def bind(self, *pos, **kw):
+    def bind(self, *pos, **kw):  # pylint: disable=inconsistent-return-statements
         """
         Implements proxy connection for UDP sockets,
         which happens during the bind() phase.
@@ -359,7 +370,7 @@ class socksocket(_BaseSocket):
         _BaseSocket.connect(self, (host, port))
         self.proxy_sockname = ("0.0.0.0", 0)  # Unknown
 
-    def sendto(self, bytes, *args):
+    def sendto(self, bytes, *args):  # pylint: disable=redefined-builtin
         if self.type != socket.SOCK_DGRAM:
             return _BaseSocket.sendto(self, bytes, *args)
         if not self._proxyconn:
@@ -378,11 +389,10 @@ class socksocket(_BaseSocket):
         sent = _BaseSocket.send(self, header.getvalue() + bytes, *flags)
         return sent - header.tell()
 
-    def send(self, bytes, flags=0):
+    def send(self, bytes, flags=0):  # pylint: disable=redefined-builtin
         if self.type == socket.SOCK_DGRAM:
             return self.sendto(bytes, flags, self.proxy_peername)
-        else:
-            return _BaseSocket.send(self, bytes, flags)
+        return _BaseSocket.send(self, bytes, flags)
 
     def recvfrom(self, bufsize, flags=0):
         if self.type != socket.SOCK_DGRAM:
@@ -406,8 +416,8 @@ class socksocket(_BaseSocket):
         return (buf.read(), (fromhost, fromport))
 
     def recv(self, *pos, **kw):
-        bytes, _ = self.recvfrom(*pos, **kw)
-        return bytes
+        bytes_, _ = self.recvfrom(*pos, **kw)
+        return bytes_
 
     def close(self):
         if self._proxyconn:
@@ -509,8 +519,7 @@ class socksocket(_BaseSocket):
                     raise SOCKS5AuthError(
                         "All offered SOCKS5 authentication methods were rejected"
                     )
-                else:
-                    raise GeneralProxyError("SOCKS5 proxy server sent invalid data")
+                raise GeneralProxyError("SOCKS5 proxy server sent invalid data")
 
             # Now we can request the actual connection
             writer.write(b"\x05" + cmd + b"\x00")
@@ -669,16 +678,18 @@ class socksocket(_BaseSocket):
 
         try:
             proto, status_code, status_msg = status_line.split(" ", 2)
-        except ValueError:
-            raise GeneralProxyError("HTTP proxy server sent invalid response")
+        except ValueError as err:
+            raise GeneralProxyError("HTTP proxy server sent invalid response") from err
 
         if not proto.startswith("HTTP/"):
             raise GeneralProxyError("Proxy server does not appear to be an HTTP proxy")
 
         try:
             status_code = int(status_code)
-        except ValueError:
-            raise HTTPError("HTTP proxy server did not return a valid HTTP status")
+        except ValueError as err:
+            raise HTTPError(
+                "HTTP proxy server did not return a valid HTTP status"
+            ) from err
 
         if status_code != 200:
             error = "{0}: {1}".format(status_code, status_msg)
@@ -748,7 +759,7 @@ class socksocket(_BaseSocket):
             msg = "Error connecting to {0} proxy {1}".format(
                 printable_type, proxy_server
             )
-            raise ProxyConnectionError(msg, error)
+            raise ProxyConnectionError(msg, error) from error
 
         else:
             # Connected to proxy server, now negotiate
@@ -759,8 +770,8 @@ class socksocket(_BaseSocket):
             except socket.error as error:
                 # Wrap socket errors
                 self.close()
-                raise GeneralProxyError("Socket error", error)
-            except ProxyError:
+                raise GeneralProxyError("Socket error", error) from error
+            except ProxyError:  # pylint: disable=bad-except-order
                 # Protocol error while negotiating with proxy
                 self.close()
                 raise

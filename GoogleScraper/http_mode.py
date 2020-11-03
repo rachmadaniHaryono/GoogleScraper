@@ -172,7 +172,9 @@ class HttpScrape(SearchEngineScrape, threading.Timer):
             proxy: Namedtuple, Proxy to use for this thread.
         """
 
-        def create_connection(address, timeout=None, source_address=None):
+        def create_connection(
+            address, timeout=None, source_address=None
+        ):  # pylint: disable=unused-argument
             sock = socks.socksocket()
             sock.connect(address)
             return sock
@@ -190,7 +192,7 @@ class HttpScrape(SearchEngineScrape, threading.Timer):
         socket.create_connection = create_connection
 
     def switch_proxy(self, proxy):
-        super().switch_proxy()
+        super().switch_proxy()  # pylint: disable=no-value-for-parameter
 
     def proxy_check(self, proxy):
         assert self.proxy and self.requests, (
@@ -256,7 +258,7 @@ class HttpScrape(SearchEngineScrape, threading.Timer):
         self.parser = get_parser_by_search_engine(self.search_engine_name)
         self.parser = self.parser(config=self.config)
 
-    def search(self, rand=True, timeout=15):
+    def search(self, rand=True, timeout=15):  # pylint: disable=arguments-differ
         """The actual search for the search engine.
 
         When raising StopScrapingException, the scraper will stop.

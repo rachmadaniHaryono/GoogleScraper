@@ -99,7 +99,9 @@ def get_base_search_url_by_search_engine(config, search_engine_name, search_mode
     return specific_base_url
 
 
-class SearchEngineScrape(metaclass=abc.ABCMeta):
+class SearchEngineScrape(
+    metaclass=abc.ABCMeta
+):  # pylint: disable=too-many-instance-attributes,too-many-arguments
     """Abstract base class that represents a search engine scrape.
 
     Each subclass that derives from SearchEngineScrape needs to
@@ -326,10 +328,7 @@ class SearchEngineScrape(metaclass=abc.ABCMeta):
 
             store_serp_result(serp, self.config)
 
-            if serp.num_results:
-                return True
-            else:
-                return False
+            return bool(serp.num_results)
 
     def next_page(self):
         """Increment the page. The next search request will request the next page."""
@@ -357,7 +356,7 @@ class SearchEngineScrape(metaclass=abc.ABCMeta):
                 scraper_name,
                 self.requested_by,
                 self.search_type,
-                self.base_search_url,
+                self.base_search_url,  # pylint: disable=no-member
                 self.search_engine_name,
                 len(self.jobs),
                 self.pages_per_keyword,
@@ -405,9 +404,11 @@ class SearchEngineScrape(metaclass=abc.ABCMeta):
         return sleeping_times
 
     def detection_prevention_sleep(self):
-        self.current_delay = 0
+        self.current_delay = 0  # pylint: disable=attribute-defined-outside-init
         if self.config.get("do_sleep", True):
-            self.current_delay = self.sleeping_times[self.search_number]
+            self.current_delay = self.sleeping_times[
+                self.search_number
+            ]  # pylint: disable=attribute-defined-outside-init
             time.sleep(self.current_delay)
 
         if self.config.get("do_sleep", True):
@@ -415,7 +416,9 @@ class SearchEngineScrape(metaclass=abc.ABCMeta):
                 sleep_range = self.config.get("fixed_sleeping_ranges", {})[
                     self.search_number
                 ]
-                self.current_delay = random.randrange(*sleep_range)
+                self.current_delay = random.randrange(
+                    *sleep_range
+                )  # pylint: disable=attribute-defined-outside-init
                 time.sleep(self.current_delay)
             except KeyError as ke:
                 # normal case
@@ -443,7 +446,7 @@ class SearchEngineScrape(metaclass=abc.ABCMeta):
         """Things that need to happen before entering the search loop."""
         # check proxies first before anything
         if self.config.get("check_proxies", True) and self.proxy:
-            if not self.proxy_check():
+            if not self.proxy_check():  # pylint: disable=no-value-for-parameter
                 self.startable = False
 
     def update_proxy_status(self, status, ipinfo=None, online=True):
@@ -480,7 +483,7 @@ from GoogleScraper.selenium_mode import get_selenium_scraper_by_search_engine_na
 
 
 class ScrapeWorkerFactory:
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         config,
         cache_manager=None,
@@ -550,7 +553,7 @@ class ScrapeWorkerFactory:
                     browser_num=self.browser_num,
                 )
 
-            elif self.mode == "http":
+            if self.mode == "http":
 
                 return HttpScrape(
                     self.config,

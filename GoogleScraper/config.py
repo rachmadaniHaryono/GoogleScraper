@@ -1,22 +1,23 @@
 # -*- coding: utf-8 -*-
 
-import GoogleScraper.scrape_config
+import importlib
 import inspect
 import os
+from importlib.machinery import SourceFileLoader
 
-try:
-    # SourceFileLoader is the recommended way in 3.3+
-    from importlib.machinery import SourceFileLoader
-
-    def load_source(name, path):
-        return SourceFileLoader(name, path).load_module()
+import GoogleScraper.scrape_config
 
 
-except ImportError:
-    # but it does not exist in 3.2-, so fall back to imp
-    import imp
+def load_source(name, path):
+    """Load source.
 
-    load_source = imp.load_source
+    based on  https://stackoverflow.com/a/19011259/1766261
+    """
+    loader = SourceFileLoader(name, path)
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    mod = importlib.util.module_from_spec(spec)
+    loader.exec_module(mod)
+    return mod
 
 
 def get_config(

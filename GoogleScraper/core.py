@@ -105,7 +105,7 @@ def start_python_console(namespace=None, noipython=False, banner=""):
             except ImportError:
                 pass
             else:
-                import rlcompleter
+                import rlcompleter  # pylint: disable=unused-import
 
                 readline.parse_and_bind("tab:complete")
             code.interact(banner=banner, local=namespace)
@@ -120,7 +120,9 @@ class ShowProgressQueue(threading.Thread):
     In order to achieve this, we need to update the status whenever a new keyword is scraped.
     """
 
-    def __init__(self, config, queue, num_keywords):
+    def __init__(
+        self, config, queue, num_keywords
+    ):  # pylint: disable=redefined-outer-name,unused-argument
         """Create a ShowProgressQueue thread instance.
 
         Args:
@@ -153,7 +155,9 @@ class ShowProgressQueue(threading.Thread):
             self.queue.task_done()
 
 
-def main(return_results=False, parse_cmd_line=True, config_from_dict=None):
+def main(  # pylint: disable=too-many-locals,inconsistent-return-statements,too-many-branches,too-many-statements
+    return_results=False, parse_cmd_line=True, config_from_dict=None
+):
     """Runs the GoogleScraper application as determined by the various configuration points.
 
     The main() function encompasses the core functionality of GoogleScraper. But it
@@ -186,7 +190,7 @@ def main(return_results=False, parse_cmd_line=True, config_from_dict=None):
 
     setup_logger(
         level=config.get("log_level").upper(),
-        format=config.get("log_format"),
+        format_=config.get("log_format"),
         logfile=config.get("log_file"),
     )
 
@@ -205,7 +209,7 @@ def main(return_results=False, parse_cmd_line=True, config_from_dict=None):
             os.remove("google_scraper.db")
             if sys.platform == "linux":
                 os.system("rm {}/*".format(config.get("cachedir")))
-        except:
+        except:  # pylint: disable=bare-except
             pass
         return
 
@@ -287,7 +291,7 @@ def main(return_results=False, parse_cmd_line=True, config_from_dict=None):
     cache_manager = CacheManager(config)
 
     if config.get("fix_cache_names"):
-        cache_manager.fix_broken_cache_names()
+        cache_manager.fix_broken_cache_names()  # pylint: disable=no-value-for-parameter
         logger.info("renaming done. restart for normal use.")
         return
 
@@ -304,27 +308,26 @@ def main(return_results=False, parse_cmd_line=True, config_from_dict=None):
             raise WrongConfigurationError(
                 "The keyword file {} does not exist.".format(kwfile)
             )
+        if kwfile.endswith(".py"):
+            # we need to import the variable "scrape_jobs" from the module.
+            sys.path.append(os.path.dirname(kwfile))
+            try:
+                modname = os.path.split(kwfile)[-1].rstrip(".py")
+                scrape_jobs = getattr(
+                    __import__(modname, fromlist=["scrape_jobs"]), "scrape_jobs"
+                )
+            except ImportError as e:
+                logger.warning(e)
         else:
-            if kwfile.endswith(".py"):
-                # we need to import the variable "scrape_jobs" from the module.
-                sys.path.append(os.path.dirname(kwfile))
-                try:
-                    modname = os.path.split(kwfile)[-1].rstrip(".py")
-                    scrape_jobs = getattr(
-                        __import__(modname, fromlist=["scrape_jobs"]), "scrape_jobs"
-                    )
-                except ImportError as e:
-                    logger.warning(e)
-            else:
-                # Clean the keywords of duplicates right in the beginning
-                # But make sure to keep the order
-                keywords = [
-                    line.strip()
-                    for line in open(kwfile, "r", encoding="utf-8").read().split("\n")
-                    if line.strip()
-                ]
-                # this is the fastest in Python 3.6 and 3.7: https://stackoverflow.com/questions/7961363/removing-duplicates-in-lists
-                keywords = list(dict.fromkeys(keywords))
+            # Clean the keywords of duplicates right in the beginning
+            # But make sure to keep the order
+            keywords = [
+                line.strip()
+                for line in open(kwfile, "r", encoding="utf-8").read().split("\n")
+                if line.strip()
+            ]
+            # this is the fastest in Python 3.6 and 3.7: https://stackoverflow.com/questions/7961363/removing-duplicates-in-lists
+            keywords = list(dict.fromkeys(keywords))
 
     if not scrape_jobs:
         scrape_jobs = default_scrape_jobs_for_keywords(
@@ -338,7 +341,11 @@ def main(return_results=False, parse_cmd_line=True, config_from_dict=None):
         return
 
     if config.get("check_oto", False):
-        cache_manager._caching_is_one_to_one(keyword)
+        # fmt: off
+        cache_manager._caching_is_one_to_one( # pylint: disable=no-value-for-parameter,protected-access
+            keyword
+        )
+        # fmt: on
 
     if config.get("num_results_per_page") > 100:
         raise WrongConfigurationError(

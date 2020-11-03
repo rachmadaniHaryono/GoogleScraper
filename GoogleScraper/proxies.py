@@ -42,12 +42,12 @@ def parse_proxy_file(fname):
                     try:
                         proto = tokens[0]
                         host, port = tokens[1].split(":")
-                    except:
+                    except Exception as err:
                         raise Exception(
                             "Invalid proxy file. Should have the following format: {}".format(
                                 parse_proxy_file.__doc__
                             )
-                        )
+                        ) from err
                     if len(tokens) == 3:
                         username, password = tokens[2].split(":")
                         proxies.append(
@@ -70,11 +70,12 @@ def parse_proxy_file(fname):
                             )
                         )
         return proxies
-    else:
-        raise ValueError("No such file/directory")
+    raise ValueError("No such file/directory")
 
 
-def get_proxies(host, user, password, database, port=3306, unix_socket=None):
+def get_proxies(
+    host, user, password, database, port=3306, unix_socket=None
+):  # pylint: disable=redefined-outer-name
     """ "Connect to a mysql database using pymysql and retrieve proxies for the scraping job.
 
     Args:

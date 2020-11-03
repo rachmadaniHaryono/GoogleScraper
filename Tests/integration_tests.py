@@ -14,7 +14,9 @@ base = os.path.dirname(os.path.realpath(__file__))
 all_search_engines = config.get("supported_search_engines")
 
 
-class GoogleScraperIntegrationTestCase(unittest.TestCase):
+class GoogleScraperIntegrationTestCase(
+    unittest.TestCase
+):  # pylint: disable=too-many-public-methods
     def setUp(self):
         pass
 
@@ -26,7 +28,8 @@ class GoogleScraperIntegrationTestCase(unittest.TestCase):
     # way to assert that a certain url or piece must be in the results.
     # If the SERP format changes, update accordingly (after all, this shouldn't happen that often).
 
-    def get_parser_for_file(self, se, file, **kwargs):
+    @classmethod
+    def get_parser_for_file(cls, se, file, **kwargs):
         file = os.path.join(base, file)
         with open(file, "r") as f:
             html = f.read()
@@ -48,9 +51,10 @@ class GoogleScraperIntegrationTestCase(unittest.TestCase):
             delta=delta,
         )
 
-    def assert_atleast90percent_of_items_are_not_None(
-        self, parser, exclude_keys={"snippet"}
-    ):
+    @classmethod
+    def assert_atleast90percent_of_items_are_not_None(cls, parser, exclude_keys=None):
+        if exclude_keys is None:
+            exclude_keys = {"snippet"}
         for result_type, res in parser.search_results.items():
 
             c = Counter()
@@ -97,7 +101,7 @@ class GoogleScraperIntegrationTestCase(unittest.TestCase):
             "bing", "data/uncompressed_serp_pages/hello_bing_de_ip.html"
         )
 
-        assert "16.900.000 results" == parser.num_results_for_query
+        assert parser.num_results_for_query == "16.900.000 results"
         assert len(parser.search_results["results"]) == 12, len(
             parser.search_results["results"]
         )
@@ -118,7 +122,7 @@ class GoogleScraperIntegrationTestCase(unittest.TestCase):
             "yahoo", "data/uncompressed_serp_pages/snow_yahoo_de_ip.html"
         )
 
-        assert "19,400,000 Ergebnisse" == parser.num_results_for_query
+        assert parser.num_results_for_query == "19,400,000 Ergebnisse"
         assert len(parser.search_results["results"]) >= 10, len(
             parser.search_results["results"]
         )
@@ -146,7 +150,7 @@ class GoogleScraperIntegrationTestCase(unittest.TestCase):
 
     def test_parse_yandex(self):
         return
-        parser = self.get_parser_for_file(
+        parser = self.get_parser_for_file(  # pylint: disable=unreachable
             "yandex", "data/uncompressed_serp_pages/game_yandex_de_ip.html"
         )
 
@@ -242,7 +246,7 @@ class GoogleScraperIntegrationTestCase(unittest.TestCase):
         number_search_engines = len(all_search_engines)
         csv_outfile = os.path.join(base, "data/tmp/csv_test.csv")
 
-        config = {
+        config_ = {
             "keyword": "some words",
             "search_engines": all_search_engines,
             "num_pages_for_keyword": 2,
@@ -252,7 +256,7 @@ class GoogleScraperIntegrationTestCase(unittest.TestCase):
             "verbosity": 0,
             "output_filename": csv_outfile,
         }
-        search = scrape_with_config(config)
+        search = scrape_with_config(config_)
 
         assert os.path.exists(csv_outfile), "{} does not exist".format(csv_outfile)
 
@@ -272,6 +276,7 @@ class GoogleScraperIntegrationTestCase(unittest.TestCase):
             "snippet",
         )
 
+        rownum = None
         for rownum, row in enumerate(reader):
             if rownum == 0:
                 header = row
@@ -297,7 +302,7 @@ class GoogleScraperIntegrationTestCase(unittest.TestCase):
         number_search_engines = len(all_search_engines)
         json_outfile = os.path.join(base, "data/tmp/json_test.json")
 
-        config = {
+        config_ = {
             "keyword": "some words",
             "search_engines": all_search_engines,
             "num_pages_for_keyword": 2,
@@ -307,7 +312,7 @@ class GoogleScraperIntegrationTestCase(unittest.TestCase):
             "verbosity": 0,
             "output_filename": json_outfile,
         }
-        search = scrape_with_config(config)
+        search = scrape_with_config(config_)
 
         assert os.path.exists(json_outfile), "{} does not exist".format(json_outfile)
 
@@ -332,10 +337,10 @@ class GoogleScraperIntegrationTestCase(unittest.TestCase):
                     for res in v:
                         num_results += 1
 
-                        for item in notnull:
+                        for item_ in notnull:
                             assert res[
-                                item
-                            ], "{} has a item that has no value: {}".format(item, res)
+                                item_
+                            ], "{} has a item that has no value: {}".format(item_, res)
 
         self.assertAlmostEqual(number_search_engines * 2 * 10, num_results, delta=30)
 
@@ -429,9 +434,9 @@ class GoogleScraperIntegrationTestCase(unittest.TestCase):
 
     ### test all SERP object indicate no results for all search engines.
 
-    def test_no_results_serp_object(self):
+    def test_no_results_serp_object(self):  # pylint: disable=no-self-use
 
-        config = {
+        config_ = {
             "keyword": "asdfasdfa7654567654345654343sdfasd",
             "search_engines": all_search_engines,
             "num_pages_for_keyword": 1,
@@ -440,7 +445,7 @@ class GoogleScraperIntegrationTestCase(unittest.TestCase):
             "do_caching": True,
             "verbosity": 1,
         }
-        search = scrape_with_config(config)
+        search = scrape_with_config(config_)
 
         assert search.number_search_engines_used == len(all_search_engines)
         assert len(search.used_search_engines.split(",")) == len(
@@ -492,14 +497,14 @@ class GoogleScraperIntegrationTestCase(unittest.TestCase):
 
             ### test correct parsing of the number of results for the query..
 
-    def test_csv_file_header_always_the_same(self):
+    def test_csv_file_header_always_the_same(self):  # pylint: disable=no-self-use
         """
         Check that csv files have always the same order in their header.
         """
         csv_outfile_1 = os.path.join(base, "data/tmp/csvout1.csv")
         csv_outfile_2 = os.path.join(base, "data/tmp/csvout2.csv")
 
-        config = {
+        config_ = {
             "keyword": "some words",
             "search_engines": all_search_engines,
             "num_pages_for_keyword": 2,
@@ -509,11 +514,11 @@ class GoogleScraperIntegrationTestCase(unittest.TestCase):
             "verbosity": 0,
             "output_filename": csv_outfile_1,
         }
-        search = scrape_with_config(config)
+        search = scrape_with_config(config_)
 
-        search = scrape_with_config(config)
-        config.update({"output_filename": csv_outfile_2})
-        search = scrape_with_config(config)
+        search = scrape_with_config(config_)
+        config_.update({"output_filename": csv_outfile_2})
+        search = scrape_with_config(config_)
 
         assert os.path.isfile(csv_outfile_1) and os.path.isfile(csv_outfile_2)
 

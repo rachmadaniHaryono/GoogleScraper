@@ -4,7 +4,7 @@ import sys
 import os
 import re
 import lxml.html
-from lxml.html.clean import Cleaner
+from lxml.html.clean import Cleaner  # pylint: disable=no-name-in-module
 from urllib.parse import unquote
 import pprint
 import logging
@@ -125,12 +125,12 @@ class Parser:
 
     def _parse_lxml(self, cleaner=None):
         try:
-            parser = lxml.html.HTMLParser(encoding="utf-8")
+            parser_ = lxml.html.HTMLParser(encoding="utf-8")
             if cleaner:
                 self.dom = cleaner.clean_html(self.dom)
-            self.dom = lxml.html.document_fromstring(self.html, parser=parser)
+            self.dom = lxml.html.document_fromstring(self.html, parser=parser_)
             self.dom.resolve_base_href()
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             # maybe wrong encoding
             logger.error(e)
 
@@ -177,7 +177,13 @@ class Parser:
             self.effective_query = ""
 
         # the element that notifies the user about no results.
-        self.no_results_text = self.first_match(self.no_results_selector, self.dom)
+        # fmt: off
+        self.no_results_text = ( # pylint: disable=attribute-defined-outside-init
+            self.first_match(
+                self.no_results_selector, self.dom
+            )
+        )
+        # fmt: on
 
         # get the stuff that is of interest in SERP pages.
         if not selector_dict and not isinstance(selector_dict, dict):
@@ -316,7 +322,7 @@ class Parser:
         cleaner.comments = True
         cleaner.style = True
         self.dom = cleaner.clean_html(self.dom)
-        assert len(self.dom), "The html needs to be parsed to get the cleaned html"
+        assert self.dom, "The html needs to be parsed to get the cleaned html"
         return lxml.html.tostring(self.dom)
 
     def iter_serp_items(self):
@@ -450,12 +456,12 @@ class GoogleParser(Parser):
 
     def after_parsing(self):
         """Clean the urls.
-        
+
         A typical scraped results looks like the following:
-        
+
         '/url?q=http://www.youtube.com/user/Apple&sa=U&ei=\
         lntiVN7JDsTfPZCMgKAO&ved=0CFQQFjAO&usg=AFQjCNGkX65O-hKLmyq1FX9HQqbb9iYn9A'
-        
+
         Clean with a short regex.
         """
         super().after_parsing()
@@ -584,7 +590,7 @@ class YandexParser(Parser):
                         self.num_results_for_query = re.search(
                             r'— (.)*?"', self.html[i : i + len(self.query) + 150]
                         ).group()
-                except Exception as e:
+                except Exception as e:  # pylint: disable=broad-except
                     logger.debug(str(e))
 
         if self.searchtype == "image":
@@ -794,7 +800,7 @@ class YahooParser(Parser):
                 for regex in (r"&imgurl=(?P<url>.*?)&",):
                     result = re.search(regex, self.search_results[key][i]["link"])
                     if result:
-                        # TODO: Fix this manual protocol adding by parsing "rurl"
+                        # TODO: Fix this manual protocol adding by parsing "rurl"  # pylint: disable=fixme
                         self.search_results[key][i]["link"] = "http://" + unquote(
                             result.group("url")
                         )
@@ -930,7 +936,7 @@ class DuckduckgoParser(Parser):
                     ].text_content()
                 ):
                     self.no_results = True
-            except:
+            except:  # pylint: disable=bare-except
                 pass
 
             if self.num_results > 0:
@@ -1012,7 +1018,7 @@ class BlekkoParser(Parser):
     }
 
 
-def get_parser_by_url(url):
+def get_parser_by_url(url):  # pylint: disable=redefined-outer-name
     """Get the appropriate parser by an search engine url.
 
     Args:
@@ -1024,28 +1030,28 @@ def get_parser_by_url(url):
     Raises:
         UnknowUrlException if no parser could be found for the url.
     """
-    parser = None
+    parser_ = None
 
     if re.search(r"^http[s]?://www\.google", url):
-        parser = GoogleParser
+        parser_ = GoogleParser
     elif re.search(r"^http://yandex\.ru", url):
-        parser = YandexParser
+        parser_ = YandexParser
     elif re.search(r"^http://www\.bing\.", url):
-        parser = BingParser
+        parser_ = BingParser
     elif re.search(r"^http[s]?://search\.yahoo.", url):
-        parser = YahooParser
+        parser_ = YahooParser
     elif re.search(r"^http://www\.baidu\.com", url):
-        parser = BaiduParser
+        parser_ = BaiduParser
     elif re.search(r"^https://duckduckgo\.com", url):
-        parser = DuckduckgoParser
+        parser_ = DuckduckgoParser
     if re.search(r"^http[s]?://[a-z]{2}?\.ask", url):
-        parser = AskParser
+        parser_ = AskParser
     if re.search(r"^http[s]?://blekko", url):
-        parser = BlekkoParser
-    if not parser:
+        parser_ = BlekkoParser
+    if not parser_:
         raise UnknowUrlException("No parser for {}.".format(url))
 
-    return parser
+    return parser_
 
 
 def get_parser_by_search_engine(search_engine):
@@ -1060,26 +1066,25 @@ def get_parser_by_search_engine(search_engine):
     Raises:
         NoParserForSearchEngineException if no parser could be found for the name.
     """
-    if search_engine == "google" or search_engine == "googleimg":
+    if search_engine in ["google", "googleimg"]:
         return GoogleParser
-    elif search_engine == "yandex":
+    if search_engine == "yandex":
         return YandexParser
-    elif search_engine == "bing":
+    if search_engine == "bing":
         return BingParser
-    elif search_engine == "yahoo":
+    if search_engine == "yahoo":
         return YahooParser
-    elif search_engine == "baidu" or search_engine == "baiduimg":
+    if search_engine in ["baidu", "baiduimg"]:
         return BaiduParser
-    elif search_engine == "duckduckgo":
+    if search_engine == "duckduckgo":
         return DuckduckgoParser
-    elif search_engine == "ask":
+    if search_engine == "ask":
         return AskParser
-    elif search_engine == "blekko":
+    if search_engine == "blekko":
         return BlekkoParser
-    else:
-        raise NoParserForSearchEngineException(
-            'No such parser for "{}"'.format(search_engine)
-        )
+    raise NoParserForSearchEngineException(
+        'No such parser for "{}"'.format(search_engine)
+    )
 
 
 def parse_serp(html="", query="", search_engine="google"):
@@ -1098,11 +1103,11 @@ def parse_serp(html="", query="", search_engine="google"):
         The parsed SERP object.
     """
 
-    parser = get_parser_by_search_engine(search_engine)
-    parser = parser(html=html, query=query)
-    parser.parse(html)
+    parser_ = get_parser_by_search_engine(search_engine)
+    parser_ = parser_(html=html, query=query)
+    parser_.parse(html)
 
-    return parser.search_results
+    return parser_.search_results
 
 
 if __name__ == "__main__":
