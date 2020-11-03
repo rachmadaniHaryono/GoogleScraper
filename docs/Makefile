@@ -9,9 +9,12 @@ SPHINXPROJ    		= GoogleScraper
 SOURCEDIR     		= source
 BUILDDIR      		= build
 PYTEST 						= pytest
-PYTESTOPTS 				=
+PYTESTOPTS 				= --black --verbose  ..
 PYTESTWATCH 			= pytest-watch
 PYTESTWATCHOPTS 	=
+PYLINT 						= pylint
+PYTLINTOPTS 			= --verbose --rcfile=../.pylintrc ../Tests ../GoogleScraper
+PYLINTJSON2HTML 	= pylint-json2html
 
 # Put it first so that "make" without argument is like "make help".
 help:
@@ -20,13 +23,25 @@ help:
 docs-autobuild:
 	@$(SPHINXAUTOBUILD) "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
+.PHONY: test
 test:
-	@$(PYTEST) --black --verbose $(PYTESTOPTS) $(O) ..
+	@$(PYTEST) $(PYTESTOPTS) && $(PYLINT) $(PYTLINTOPTS)
 
 test-watch:
-	@$(PYTESTWATCH) --runner "$(PYTEST) --black --verbose $(PYTESTOPTS) $(O) .." ..
+	@$(PYTESTWATCH) --runner "$(PYTEST) $(PYTESTOPTS)" ..
 
-.PHONY: help Makefile
+test-watch-pylint:
+	@$(PYTESTWATCH) --runner "$(PYLINT) $(PYTLINTOPTS)" ..
+
+test-pylint:
+	@$(PYLINT) $(PYTLINTOPTS)
+
+test-pylint-html:
+	@$(PYLINT) $(PYTLINTOPTS) | $(PYLINTJSON2HTML) -o pylint.html
+
+all: help
+
+.PHONY: help Makefile all clean test
 
 # Catch-all target: route all unknown targets to Sphinx using the new
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).

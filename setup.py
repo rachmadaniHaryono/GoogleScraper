@@ -28,12 +28,14 @@ setup(
     install_requires=requirements,
     extras_require={
         "dev": [
+            "pylint",
+            "pylint-json2html",
             "pytest",
             "pytest-black",
             "pytest-mypy",
-            "pytest-pylint",
             "pytest-watch",
             "sphinx-autobuild",
+            "isort",
         ]
     },
 )
