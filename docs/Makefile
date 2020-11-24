@@ -9,7 +9,7 @@ SPHINXPROJ    		= GoogleScraper
 SOURCEDIR     		= source
 BUILDDIR      		= build
 PYTEST 						= pytest
-PYTESTOPTS 				= --black --verbose  ..
+PYTESTOPTS 				= --black --verbose --doctest-modules --doctest-glob="*.rst" --ignore="../Examples" --ignore="source/conf.py" ..
 PYTESTWATCH 			= pytest-watch
 PYTESTWATCHOPTS 	=
 PYLINT 						= pylint
