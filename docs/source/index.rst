@@ -7,12 +7,14 @@ Welcome to GoogleScraper's documentation!
 =========================================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
    :caption: Contents:
 
    README
    google-scraper-tutorial
-   
+   command_line
+   GoogleScraper
+
 
 Indices and tables
 ==================
