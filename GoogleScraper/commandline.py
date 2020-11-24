@@ -1,17 +1,12 @@
 # -*- coding: utf-8 -*-
-
 import argparse
+import typing
+
 from GoogleScraper.version import __version__
 
 
-def get_command_line(only_print_help=False):
-    """
-    Parse command line arguments when GoogleScraper is used as a CLI application.
-
-    Returns:
-        The configuration as a dictionary that determines the behaviour of the app.
-    """
-
+def get_parser() -> argparse.ArgumentParser:
+    """Get parser."""
     parser = argparse.ArgumentParser(
         prog="GoogleScraper",
         description="Scrapes the Google, Yandex, Bing and many other  search engines by "
@@ -241,7 +236,17 @@ NOTSET = 0
         "yandex\". If you want to use all search engines that are available, give '*' as "
         "argument.",
     )
+    return parser
 
+
+def get_command_line(only_print_help: bool = False) -> typing.Dict[str, typing.Any]:
+    """
+    Parse command line arguments when GoogleScraper is used as a CLI application.
+
+    Returns:
+        The configuration as a dictionary that determines the behaviour of the app.
+    """
+    parser = get_parser()
     if only_print_help:
         parser.print_help()
         return {}
