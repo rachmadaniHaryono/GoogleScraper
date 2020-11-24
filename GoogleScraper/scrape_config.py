@@ -66,7 +66,7 @@ likely want to change these values.
 
 # The search queries to search for, separated by newlines. Intend every new
 # keyword-line at least more than the next keyword.
-keywords = []
+keywords: typing.List[str] = []
 
 # The keyword file. If this is a valid file path, the keywords params will be ignored and
 # the ones from the file will be taken. Each keyword must be on a separate line.

@@ -14,7 +14,10 @@ Some good stuff:
 All search requests must include the parameters site, client, q, and output. All parameter values
 must be URL-encoded (see “Appendix B: URL Encoding” on page 94), except where otherwise noted.
 """
-google_search_params = {
+import typing
+
+DictStrKey = typing.Dict[str, typing.Any]
+google_search_params: DictStrKey = {
     "q": "",  # the search query string
     "oq": None,  # Shows the original query.
     "num": "",  # the number of results per page
@@ -169,34 +172,34 @@ Yandex search params.
 
 
 """
-yandex_search_params = {}
+yandex_search_params: DictStrKey = {}
 
 """
 Bing search params.
 
 
 """
-bing_search_params = {}
+bing_search_params: DictStrKey = {}
 
 """
 Yahoo search params.
 
 
 """
-yahoo_search_params = {}
+yahoo_search_params: DictStrKey = {}
 
 """
 Baidu search params.
 
 
 """
-baidu_search_params = {}
+baidu_search_params: DictStrKey = {}
 
 """Duckduckgo search params.
 
 
 """
-duckduckgo_search_params = {}
+duckduckgo_search_params: DictStrKey = {}
 
 # ;The search params that control the Google search engine
 # [GOOGLE_SEARCH_PARAMS]

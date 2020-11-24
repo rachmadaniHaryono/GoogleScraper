@@ -56,8 +56,9 @@ __version__ = "1.5.1"
 
 import socket
 import struct
-from errno import EOPNOTSUPP, EINVAL, EAGAIN
-from io import BytesIO, SEEK_CUR
+import typing
+from errno import EAGAIN, EINVAL, EOPNOTSUPP
+from io import SEEK_CUR, BytesIO
 
 try:
     from collections.abc import Callable
@@ -226,7 +227,7 @@ class _BaseSocket(socket.socket):
             self._savedmethods[name] = getattr(self, name)
             delattr(self, name)  # Allows normal overriding mechanism to work
 
-    _savenames = list()
+    _savenames: typing.List[typing.Any] = list()
 
 
 def _makemethod(name):
@@ -246,7 +247,7 @@ for name_ in ("sendto", "send", "recvfrom", "recv"):
     # as a function in the class.
     # Python 2 uses __slots__, so there are descriptors for each method,
     # but they are not functions.
-    if not isinstance(method, Callable):
+    if not isinstance(method, Callable):  # type: ignore
         _BaseSocket._savenames.append(name_)  # pylint: disable=protected-access
         setattr(_BaseSocket, name_, _makemethod(name_))
 
