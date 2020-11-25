@@ -6,6 +6,7 @@ Copyright 2006 Dan-Haim. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
+
 1. Redistributions of source code must retain the above copyright notice, this
    list of conditions and the following disclaimer.
 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -38,18 +39,19 @@ Minor modifications made by Mario Vilas (http://breakingcode.wordpress.com/)
 mainly to merge bug fixes found in Sourceforge
 
 Modifications made by Anorov (https://github.com/Anorov)
--Forked and renamed to PySocks
--Fixed issue with HTTP proxy failure checking (same bug that was in the old ___recvall() method)
--Included SocksiPyHandler (sockshandler.py), to be used as a urllib2 handler,
- courtesy of e000 (https://github.com/e000): https://gist.github.com/869791#file_socksipyhandler.py
--Re-styled code to make it readable
-    -Aliased PROXY_TYPE_SOCKS5 -> SOCKS5 etc.
-    -Improved exception handling and output
-    -Removed irritating use of sequence indexes, replaced with tuple unpacked variables
-    -Fixed up Python 3 bytestring handling - chr(0x03).encode() -> b"\x03"
-    -Other general fixes
--Added clarification that the HTTP proxy connection method only supports CONNECT-style tunneling HTTP proxies
--Various small bug fixes
+
+* Forked and renamed to PySocks
+* Fixed issue with HTTP proxy failure checking (same bug that was in the old ___recvall() method)
+* Included SocksiPyHandler (sockshandler.py), to be used as a urllib2 handler,
+    courtesy of e000 (https://github.com/e000): https://gist.github.com/869791#file_socksipyhandler.py
+* Re-styled code to make it readable
+    * Aliased PROXY_TYPE_SOCKS5 -> SOCKS5 etc.
+    * Improved exception handling and output
+    * Removed irritating use of sequence indexes, replaced with tuple unpacked variables
+    * Fixed up Python 3 bytestring handling - chr(0x03).encode() -> b"\x03"
+    * Other general fixes
+* Added clarification that the HTTP proxy connection method only supports CONNECT-style tunneling HTTP proxies
+* Various small bug fixes
 """
 
 __version__ = "1.5.1"
@@ -201,12 +203,11 @@ def create_connection(
 ):
     """create_connection(dest_pair, *[, timeout], **proxy_args) -> socket object
 
-    Like socket.create_connection(), but connects to proxy
-    before returning the socket object.
+    Like :py:obj:`socket.create_connection`, but connects to proxy before returning the socket object.
 
-    dest_pair - 2-tuple of (IP/hostname, port).
-    **proxy_args - Same args passed to socksocket.set_proxy().
-    timeout - Optional socket timeout value, in seconds.
+    :param dest_pair: 2-tuple of (IP/hostname, port).
+    :param proxy_args: Same args passed to socksocket.set_proxy().
+    :param timeout: Optional socket timeout value, in seconds.
     """
     sock = socksocket()
     if isinstance(timeout, (int, float)):
@@ -310,19 +311,23 @@ class socksocket(_BaseSocket):
         """set_proxy(proxy_type, addr[, port[, rdns[, username[, password]]]])
         Sets the proxy to be used.
 
-        proxy_type -    The type of the proxy to be used. Three types
-                        are supported: PROXY_TYPE_SOCKS4 (including socks4a),
-                        PROXY_TYPE_SOCKS5 and PROXY_TYPE_HTTP
-        addr -        The address of the server (IP or DNS).
-        port -        The port of the server. Defaults to 1080 for SOCKS
-                       servers and 8080 for HTTP proxy servers.
-        rdns -        Should DNS queries be performed on the remote side
-                       (rather than the local side). The default is True.
-                       Note: This has no effect with SOCKS4 servers.
-        username -    Username to authenticate with to the server.
-                       The default is no authentication.
-        password -    Password to authenticate with to the server.
-                       Only relevant when username is also provided.
+        Supported proxy type:
+
+        * PROXY_TYPE_SOCKS4 (including socks4a),
+        * PROXY_TYPE_SOCKS5
+        * PROXY_TYPE_HTTP
+
+        :param proxy_type: The type of the proxy to be used.
+        :param addr: The address of the server (IP or DNS).
+        :param port: The port of the server. Defaults to 1080 for SOCKS
+            servers and 8080 for HTTP proxy servers.
+        :param rdns: Should DNS queries be performed on the remote side
+            (rather than the local side). The default is True.
+            Note: This has no effect with SOCKS4 servers.
+        :param username: Username to authenticate with to the server.
+            The default is no authentication.
+        :param password: Password to authenticate with to the server.
+            Only relevant when username is also provided.
         """
         self.proxy = (
             proxy_type,

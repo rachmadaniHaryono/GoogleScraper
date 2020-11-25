@@ -76,21 +76,18 @@ def parse_proxy_file(fname):
 def get_proxies(
     host, user, password, database, port=3306, unix_socket=None
 ):  # pylint: disable=redefined-outer-name
-    """ "Connect to a mysql database using pymysql and retrieve proxies for the scraping job.
+    """Connect to a mysql database using pymysql and retrieve proxies for the scraping job.
 
-    Args:
-        host: The mysql database host
-        user: The mysql user
-        password: The database password
-        port: The mysql port, by default 3306
-        unix_socket: Sometimes you need to specify the mysql socket file when mysql doesn't reside
-                     in a standard location.
+    :param host: The mysql database host
+    :param user: The mysql user
+    :param password: The database password
+    :param port: The mysql port, by default 3306
+    :param unix_socket: Sometimes you need to specify the mysql socket file when mysql doesn't
+        reside in a standard location.
 
-    Returns;
-        A list of proxies obtained from the database
+    :return: A list of proxies obtained from the database
 
-    Raisese:
-        An Exception when connecting to the database fails.
+    :raises: An Exception when connecting to the database fails.
     """
     try:
         conn = pymysql.connect(
